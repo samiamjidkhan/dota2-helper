@@ -18,7 +18,7 @@ const staticFilesPath = __dirname;
 app.use(express.static(staticFilesPath)); 
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent?key=${GOOGLE_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent?key=${GOOGLE_API_KEY}`;
 
 // --- Hardcoded Hero Data ---
 const DOTA_HERO_NAMES = [
@@ -140,7 +140,7 @@ Please structure your advice clearly using the following Markdown headings exact
 (Standard late-game item choices, simplified teamfight role, focusing on key objectives like Roshan or defending high ground, and 1-2 critical opponent abilities to be aware of)
 
 ### Item Build Suggestions
-(Provide a concise list of standard core items and 1-2 key situational items, briefly explaining *why* they are good in this matchup for this skill level)
+(Provide a list of standard core items and key situational items, briefly explaining *why* they are good in this matchup for this skill level)
 
 ### Key Matchup Considerations
 (Highlight 1-2 crucial interactions, counters, or synergies most relevant to a beginner/intermediate player in this specific matchup)
