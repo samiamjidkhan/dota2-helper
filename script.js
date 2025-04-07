@@ -23,7 +23,7 @@ const heroInputs = [
 ];
 
 let validHeroNames = new Set(); // To store valid hero names for validation
-let heroIconMap = {}; // Store hero name -> icon URL
+// let heroIconMap = {}; // Removed: No longer fetching icons
 
 // Function to fetch heroes and populate the datalist + icon map
 async function populateHeroData() {
@@ -37,20 +37,20 @@ async function populateHeroData() {
         // Clear existing datalist options
         heroDatalist.innerHTML = ''; 
         validHeroNames.clear();
-        heroIconMap = {};
+        // heroIconMap = {}; // Removed
 
         // Populate datalist and the Set of valid names
         heroesData.forEach(hero => {
             const option = document.createElement('option');
             option.value = hero.localized_name;
             // Add hero icon URL as a data attribute for potential future use
-            option.dataset.icon = hero.icon; 
+            // option.dataset.icon = hero.icon; // Removed: No icon data
             heroDatalist.appendChild(option);
             validHeroNames.add(hero.localized_name); // Add to Set for validation
-            heroIconMap[hero.localized_name] = hero.icon; // Store for display
+            // heroIconMap[hero.localized_name] = hero.icon; // Removed
         });
 
-        console.log('Hero datalist and icon map populated.');
+        console.log('Hero datalist populated.');
         submitButton.disabled = false; // Enable submit button once heroes are loaded
 
     } catch (error) {
