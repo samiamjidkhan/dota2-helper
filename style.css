@@ -382,6 +382,11 @@ footer a:hover {
     text-decoration: underline;
 }
 
+.footer-separator {
+    margin: 0 8px; /* Add space around the separator */
+    color: #666; /* Dim color for the separator */
+}
+
 /* --- Responsive Design --- */
 
 /* Medium Screens (Tablets, smaller desktops) */
