@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota 2 Helper</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="images/dota2_favicon.png">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <img src="images/dota2_logo.png" alt="Dota 2 Logo" class="header-logo">
+            <h1>helper</h1>
+        </header>
+
+        <form id="heroForm">
+            <!-- Shared Datalist for Hero Suggestions -->
+            <datalist id="heroList">
+                <!-- Options will be populated by script.js -->
+            </datalist>
+
+            <div class="teams">
+                <div class="team my-team">
+                    <h2>My Team</h2>
+                    <div class="hero-inputs">
+                        <div class="form-group main-hero">
+                            <label for="yourHero">My Hero:</label>
+                            <input type="text" id="yourHero" name="yourHero" list="heroList" required autocomplete="off">
+                        </div>
+                        <div class="form-group ally-hero">
+                            <label for="ally1">Ally 1:</label>
+                            <input type="text" id="ally1" name="ally1" list="heroList" required autocomplete="off">
+                        </div>
+                         <div class="form-group ally-hero">
+                            <label for="ally2">Ally 2:</label>
+                            <input type="text" id="ally2" name="ally2" list="heroList" required autocomplete="off">
+                        </div>
+                         <div class="form-group ally-hero">
+                            <label for="ally3">Ally 3:</label>
+                            <input type="text" id="ally3" name="ally3" list="heroList" required autocomplete="off">
+                        </div>
+                         <div class="form-group ally-hero">
+                            <label for="ally4">Ally 4:</label>
+                            <input type="text" id="ally4" name="ally4" list="heroList" required autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="team opponent-team">
+                    <h2>Opponent Team</h2>
+                     <div class="hero-inputs">
+                         <div class="form-group opponent-hero">
+                            <label for="opponent1">Opponent 1:</label>
+                            <input type="text" id="opponent1" name="opponent1" list="heroList" required autocomplete="off">
+                        </div>
+                        <div class="form-group opponent-hero">
+                            <label for="opponent2">Opponent 2:</label>
+                            <input type="text" id="opponent2" name="opponent2" list="heroList" required autocomplete="off">
+                        </div>
+                         <div class="form-group opponent-hero">
+                            <label for="opponent3">Opponent 3:</label>
+                            <input type="text" id="opponent3" name="opponent3" list="heroList" required autocomplete="off">
+                        </div>
+                        <div class="form-group opponent-hero">
+                            <label for="opponent4">Opponent 4:</label>
+                            <input type="text" id="opponent4" name="opponent4" list="heroList" required autocomplete="off">
+                        </div>
+                        <div class="form-group opponent-hero">
+                            <label for="opponent5">Opponent 5:</label>
+                            <input type="text" id="opponent5" name="opponent5" list="heroList" required autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p id="error-message" class="error"></p> <!-- Area for validation messages -->
+
+            <div class="form-actions">
+                 <button type="submit">HELP ME</button>
+                 <button type="button" id="clearFormBtn" class="secondary-button">Clear Selections</button>
+            </div>
+        </form>
+
+        <div id="results">
+            <h2>Tips & Build</h2>
+            <!-- Loading Spinner -->
+            <div id="loadingSpinner" class="spinner-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Generating advice...</p>
+            </div>
+            <!-- Output Area -->
+            <div id="output" class="output-content">
+                <!-- LLM results will be displayed here -->
+            </div>
+        </div>
+
+        <footer>
+            <p>Suggestions or feedback? Reach out on <a href="https://x.com/ibnAmjid" target="_blank" rel="noopener noreferrer">X (formerly Twitter)</a>.</p>
+        </footer>
+
+    </div> <!-- /container -->
+
+    <script src="script.js"></script>
+</body>
+</html> 
