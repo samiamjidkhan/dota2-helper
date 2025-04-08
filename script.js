@@ -60,6 +60,31 @@ async function populateHeroData() {
     }
 }
 
+function autoCorrectInputs(input) {
+    const separator = input.value.includes('-') ? '-' : ' ' // Anti-Mage
+
+    let heroName = input.value
+        .trim()
+        .replace(/\s+/g, ' ') // handle multiple spaces between words; e.g. 'Phantom  Lancer'
+
+    if (heroName.toLowerCase() === 'keeper of the light') {
+        input.value = 'Keeper of the Light'
+    } else {
+        const splitLength = heroName.split(separator).length;
+        if (splitLength <= 2) {
+            heroName = heroName
+                .split(separator)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(separator);
+        }
+
+        // Auto correct hero name if possible
+        if (validHeroNames.has(heroName)) {
+            input.value = heroName;
+        }
+    }
+}
+
 // Function to validate hero inputs (with real-time feedback hints)
 function validateHeroInputs(isFinalCheck = false) {
     let isValid = true;
@@ -113,6 +138,7 @@ document.addEventListener('DOMContentLoaded', populateHeroData);
 // Real-time validation hints on input blur (losing focus)
 heroInputs.forEach(input => {
     input.addEventListener('blur', () => {
+        autoCorrectInputs(input);
         validateHeroInputs(false); // Run validation, but don't show main error message yet
     });
     // Clear specific input error on typing
@@ -258,4 +284,4 @@ clearFormBtn.addEventListener('click', () => {
     outputDiv.innerHTML = ''; // Clear results area
     outputDiv.style.display = 'block'; // Ensure output area is visible
     loadingSpinner.style.display = 'none'; // Ensure spinner is hidden
-}); 
+});
