@@ -25,6 +25,47 @@ const heroInputs = [
 let validHeroNames = new Set(); // To store valid hero names for validation
 // let heroIconMap = {}; // Removed: No longer fetching icons
 
+const HERO_ABBREVIATIONS = {
+    'Ancient Apparition': genAbbreviations('aa'),
+    'Anti-Mage': genAbbreviations('am'),
+    'Bounty Hunter': genAbbreviations('bh'),
+    'Chaos Knight': genAbbreviations('ck'),
+    'Crystal Maiden': genAbbreviations('cm'),
+    'Dark Seer': genAbbreviations('ds'),
+    'Death Prophet': genAbbreviations('dp'),
+    'Dragon Knight': genAbbreviations('dk'),
+    'Elder Titan': genAbbreviations('et'),
+    'Faceless Void': genAbbreviations('fv'),
+    'Keeper of the Light': ['kotl'],
+    'Legion Commander': genAbbreviations('lc'),
+    'Lone Druid': genAbbreviations('ld'),
+    'Monkey King': genAbbreviations('mk'),
+    'Nature\'s Prophet': genAbbreviations('np'),
+    'Night Stalker': genAbbreviations('ns'),
+    'Outworld Destroyer': genAbbreviations('od'),
+    'Phantom Assassin': genAbbreviations('pa'),
+    'Phantom Lancer': genAbbreviations('pl'),
+    'Queen of Pain': genAbbreviations('qop'),
+    'Sand King': genAbbreviations('sk'),
+    'Shadow Demon': genAbbreviations('sd'),
+    'Shadow Fiend': genAbbreviations('sf'),
+    'Skywrath Mage': genAbbreviations('sm'),
+    'Spirit Breaker': genAbbreviations('sb'),
+    'Templar Assassin': genAbbreviations('ta'),
+    'Windranger': genAbbreviations('wr'),
+    'Winter Wyvern': genAbbreviations('ww'),
+    'Witch Doctor': genAbbreviations('wd'),
+    'Wraith King': genAbbreviations('wk')
+};
+
+function genAbbreviations(baseAbbr) {
+    return [
+        baseAbbr.toUpperCase(),
+        baseAbbr.charAt(0).toUpperCase() + baseAbbr.slice(1).toLowerCase(),
+        baseAbbr
+    ];
+}
+
 // Function to fetch heroes and populate the datalist + icon map
 async function populateHeroData() {
     try {
@@ -61,6 +102,12 @@ async function populateHeroData() {
 }
 
 function autoCorrectInputs(input) {
+    for (const [heroName, abbrSet] of Object.entries(HERO_ABBREVIATIONS)) {
+        if (abbrSet.includes(input.value.trim())) {
+            input.value = heroName;
+            break;
+        }
+    }
     const separator = input.value.includes('-') ? '-' : ' ' // Anti-Mage
 
     let heroName = input.value
