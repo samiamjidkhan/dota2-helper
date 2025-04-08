@@ -18,7 +18,7 @@ const staticFilesPath = __dirname;
 app.use(express.static(staticFilesPath)); 
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent?key=${GOOGLE_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent?key=${GOOGLE_API_KEY}`;
 
 // --- Hardcoded Hero Data ---
 const DOTA_HERO_NAMES = [
