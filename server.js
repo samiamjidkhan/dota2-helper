@@ -18,7 +18,7 @@ const staticFilesPath = __dirname;
 app.use(express.static(staticFilesPath)); 
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent?key=${GOOGLE_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent?key=${GOOGLE_API_KEY}`;
 
 // --- Hardcoded Hero Data ---
 const DOTA_HERO_NAMES = [
@@ -117,13 +117,14 @@ app.post('/api/get-tips', async (req, res) => {
     }
     // --- End Backend Validation ---
 
-    // Construct the *structured* prompt for the LLM (Keep the refined prompt)
+    // Construct the *structured* prompt for the LLM
     const prompt = `
 As a Dota 2 expert coach, provide advice for playing ${yourHero} in a specific match.
 My allies are: ${allies.join(', ')}.
 My opponents are: ${opponents.join(', ')}.
 
 **Assume the player understands Dota 2 basics but is not an expert (e.g., around Archon/Legend rank or learning the hero). Explain key concepts clearly and prioritize standard item builds and reliable strategies.**
+**IMPORTANT: Only suggest items currently available in the latest Dota 2 patch. Do NOT mention removed items like Stout Shield, Poor Man's Shield, etc.**
 
 Please structure your advice clearly using the following Markdown headings exactly:
 
@@ -140,7 +141,7 @@ Please structure your advice clearly using the following Markdown headings exact
 (Standard late-game item choices, simplified teamfight role, focusing on key objectives like Roshan or defending high ground, and 1-2 critical opponent abilities to be aware of)
 
 ### Item Build Suggestions
-(Provide a list of standard core items and key situational items, briefly explaining *why* they are good in this matchup for this skill level)
+(Provide a list of standard core items and key situational items *currently in the game*, briefly explaining *why* they are good in this matchup for this skill level)
 
 ### Key Matchup Considerations
 (Highlight 1-2 crucial interactions, counters, or synergies most relevant to a beginner/intermediate player in this specific matchup)
