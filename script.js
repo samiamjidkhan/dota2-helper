@@ -36,7 +36,7 @@ const HERO_ABBREVIATIONS = {
     'Dragon Knight': genAbbreviations('dk'),
     'Elder Titan': genAbbreviations('et'),
     'Faceless Void': genAbbreviations('fv'),
-    'Keeper of the Light': ['kotl'],
+    'Keeper of the Light': genAbbreviations('kotl'),
     'Legion Commander': genAbbreviations('lc'),
     'Lone Druid': genAbbreviations('ld'),
     'Monkey King': genAbbreviations('mk'),
