@@ -24,25 +24,30 @@
                 <div class="team my-team">
                     <h2>My Team</h2>
                     <div class="hero-inputs">
-                        <div class="form-group main-hero">
-                            <label for="yourHero">My Hero:</label>
-                            <input type="text" id="yourHero" name="yourHero" list="heroList" required autocomplete="off">
+                        <div class="form-group main-hero-role">
+                            <label for="yourHeroRole">My Role & Hero</label>
+                            <div class="hero-and-role">
+                                <select id="yourHeroRole" name="yourHeroRole" class="role-selector"></select>
+                                <input type="text" id="yourHero" name="yourHero" list="heroList" required autocomplete="off">
+                            </div>
                         </div>
-                        <div class="form-group ally-hero">
-                            <label for="ally1">Ally 1:</label>
-                            <input type="text" id="ally1" name="ally1" list="heroList" required autocomplete="off">
-                        </div>
-                         <div class="form-group ally-hero">
-                            <label for="ally2">Ally 2:</label>
-                            <input type="text" id="ally2" name="ally2" list="heroList" required autocomplete="off">
-                        </div>
-                         <div class="form-group ally-hero">
-                            <label for="ally3">Ally 3:</label>
-                            <input type="text" id="ally3" name="ally3" list="heroList" required autocomplete="off">
-                        </div>
-                         <div class="form-group ally-hero">
-                            <label for="ally4">Ally 4:</label>
-                            <input type="text" id="ally4" name="ally4" list="heroList" required autocomplete="off">
+                        <div class="hero-grid">
+                            <div class="form-group ally-hero">
+                                <label for="ally1" id="ally1-label">Ally 1:</label>
+                                <input type="text" id="ally1" name="ally1" list="heroList" required autocomplete="off">
+                            </div>
+                            <div class="form-group ally-hero">
+                                <label for="ally2" id="ally2-label">Ally 2:</label>
+                                <input type="text" id="ally2" name="ally2" list="heroList" required autocomplete="off">
+                            </div>
+                            <div class="form-group ally-hero">
+                                <label for="ally3" id="ally3-label">Ally 3:</label>
+                                <input type="text" id="ally3" name="ally3" list="heroList" required autocomplete="off">
+                            </div>
+                             <div class="form-group ally-hero">
+                                <label for="ally4" id="ally4-label">Ally 4:</label>
+                                <input type="text" id="ally4" name="ally4" list="heroList" required autocomplete="off">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -50,25 +55,27 @@
                 <div class="team opponent-team">
                     <h2>Opponent Team</h2>
                      <div class="hero-inputs">
-                         <div class="form-group opponent-hero">
-                            <label for="opponent1">Opponent 1:</label>
-                            <input type="text" id="opponent1" name="opponent1" list="heroList" required autocomplete="off">
-                        </div>
-                        <div class="form-group opponent-hero">
-                            <label for="opponent2">Opponent 2:</label>
-                            <input type="text" id="opponent2" name="opponent2" list="heroList" required autocomplete="off">
-                        </div>
-                         <div class="form-group opponent-hero">
-                            <label for="opponent3">Opponent 3:</label>
-                            <input type="text" id="opponent3" name="opponent3" list="heroList" required autocomplete="off">
-                        </div>
-                        <div class="form-group opponent-hero">
-                            <label for="opponent4">Opponent 4:</label>
-                            <input type="text" id="opponent4" name="opponent4" list="heroList" required autocomplete="off">
-                        </div>
-                        <div class="form-group opponent-hero">
-                            <label for="opponent5">Opponent 5:</label>
-                            <input type="text" id="opponent5" name="opponent5" list="heroList" required autocomplete="off">
+                        <div class="hero-grid">
+                             <div class="form-group opponent-hero">
+                                <label for="opponent1">Safe Lane</label>
+                                <input type="text" id="opponent1" name="opponent1" list="heroList" required autocomplete="off">
+                            </div>
+                            <div class="form-group opponent-hero">
+                                <label for="opponent2">Midlane</label>
+                                <input type="text" id="opponent2" name="opponent2" list="heroList" required autocomplete="off">
+                            </div>
+                             <div class="form-group opponent-hero">
+                                <label for="opponent3">Offlane</label>
+                                <input type="text" id="opponent3" name="opponent3" list="heroList" required autocomplete="off">
+                            </div>
+                            <div class="form-group opponent-hero">
+                                <label for="opponent4">Support</label>
+                                <input type="text" id="opponent4" name="opponent4" list="heroList" required autocomplete="off">
+                            </div>
+                            <div class="form-group opponent-hero">
+                                <label for="opponent5">Hard Support</label>
+                                <input type="text" id="opponent5" name="opponent5" list="heroList" required autocomplete="off">
+                            </div>
                         </div>
                     </div>
                 </div>

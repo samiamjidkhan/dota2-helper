@@ -6,6 +6,13 @@ const errorMessageP = document.getElementById('error-message');
 const heroDatalist = document.getElementById('heroList');
 const loadingSpinner = document.getElementById('loadingSpinner');
 const clearFormBtn = document.getElementById('clearFormBtn');
+const yourHeroRoleSelect = document.getElementById('yourHeroRole');
+const allyLabels = [
+    document.getElementById('ally1-label'),
+    document.getElementById('ally2-label'),
+    document.getElementById('ally3-label'),
+    document.getElementById('ally4-label')
+];
 const submitButton = heroForm.querySelector('button[type="submit"]');
 
 // Get all hero input elements
@@ -23,6 +30,8 @@ const heroInputs = [
 ];
 
 let validHeroNames = new Set(); // To store valid hero names for validation
+const ROLES = ['Safe Lane', 'Midlane', 'Offlane', 'Support', 'Hard Support'];
+
 // let heroIconMap = {}; // Removed: No longer fetching icons
 
 const HERO_ABBREVIATIONS = {
@@ -64,6 +73,28 @@ function genAbbreviations(baseAbbr) {
         baseAbbr.charAt(0).toUpperCase() + baseAbbr.slice(1).toLowerCase(),
         baseAbbr
     ];
+}
+
+// Populates the role dropdown for the user's hero
+function populateRoleDropdown() {
+    ROLES.forEach(role => {
+        const option = document.createElement('option');
+        option.value = role;
+        option.textContent = role;
+        yourHeroRoleSelect.appendChild(option);
+    });
+}
+
+// Updates the labels for the ally heroes based on the user's selected role
+function updateAllyRoles() {
+    const selectedRole = yourHeroRoleSelect.value;
+    const remainingRoles = ROLES.filter(r => r !== selectedRole);
+    allyLabels.forEach((label, index) => {
+        if (label) {
+            // e.g., "Offlane"
+            label.textContent = remainingRoles[index];
+        }
+    });
 }
 
 // Function to fetch heroes and populate the datalist + icon map
@@ -180,7 +211,14 @@ function validateHeroInputs(isFinalCheck = false) {
 }
 
 // Call the function to populate datalist when the page loads
-document.addEventListener('DOMContentLoaded', populateHeroData);
+document.addEventListener('DOMContentLoaded', () => {
+    populateHeroData();
+    populateRoleDropdown();
+    updateAllyRoles(); // Set initial ally roles
+});
+
+// Add event listener for when the user changes their role selection
+yourHeroRoleSelect.addEventListener('change', updateAllyRoles);
 
 // Real-time validation hints on input blur (losing focus)
 heroInputs.forEach(input => {
@@ -276,29 +314,44 @@ heroForm.addEventListener('submit', async (event) => {
     submitButton.disabled = true; // Disable button during request
     clearFormBtn.disabled = true;
 
-    const selectedHeroes = {
-        yourHero: document.getElementById('yourHero').value,
-        allies: [
-            document.getElementById('ally1').value,
-            document.getElementById('ally2').value,
-            document.getElementById('ally3').value,
-            document.getElementById('ally4').value,
-        ],
-        opponents: [
-            document.getElementById('opponent1').value,
-            document.getElementById('opponent2').value,
-            document.getElementById('opponent3').value,
-            document.getElementById('opponent4').value,
-            document.getElementById('opponent5').value,
-        ]
-    };
+    // --- Construct the payload with hero and role information ---
+    const yourRole = yourHeroRoleSelect.value;
+    const yourHeroName = document.getElementById('yourHero').value;
+    const remainingRoles = ROLES.filter(r => r !== yourRole);
+
+    // My Team
+    const myTeam = [{ role: yourRole, hero: yourHeroName }];
+    const allyInputs = [
+        document.getElementById('ally1'),
+        document.getElementById('ally2'),
+        document.getElementById('ally3'),
+        document.getElementById('ally4')
+    ];
+    allyInputs.forEach((input, index) => {
+        myTeam.push({ role: remainingRoles[index], hero: input.value });
+    });
+
+    // Opponent Team (roles are fixed from HTML labels)
+    const opponentRoles = ['Safe Lane', 'Midlane', 'Offlane', 'Support', 'Hard Support'];
+    const opponentInputs = [
+        document.getElementById('opponent1'),
+        document.getElementById('opponent2'),
+        document.getElementById('opponent3'),
+        document.getElementById('opponent4'),
+        document.getElementById('opponent5')
+    ];
+    const opponentTeam = opponentInputs.map((input, index) => {
+        return { role: opponentRoles[index], hero: input.value };
+    });
+
+    const selectedData = { myTeam, opponentTeam };
 
     try {
-        console.log('Sending API request with heroes:', selectedHeroes);
+        console.log('Sending API request with heroes and roles:', selectedData);
         const response = await fetch('/api/get-tips', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(selectedHeroes),
+            body: JSON.stringify(selectedData),
         });
 
         const data = await response.json();

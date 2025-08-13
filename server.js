@@ -18,7 +18,7 @@ const staticFilesPath = __dirname;
 app.use(express.static(staticFilesPath)); 
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent?key=${GOOGLE_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
 
 // --- Hardcoded Hero Data ---
 const DOTA_HERO_NAMES = [
@@ -75,34 +75,56 @@ app.get('/api/heroes', async (req, res) => {
 
 // API route to get tips from Gemini
 app.post('/api/get-tips', async (req, res) => {
-    const { yourHero, allies, opponents } = req.body; 
+    const { myTeam, opponentTeam } = req.body; 
 
-    // --- Backend Validation (using hardcoded set) ---
+    // --- Backend Validation ---
     let allSelectedHeroes = [];
+    let validationError = null;
     try {
-        if (!yourHero || !allies || !opponents || allies.length !== 4 || opponents.length !== 5) {
-             return res.status(400).json({ error: 'Invalid input structure. Requires yourHero, 4 allies, 5 opponents.' });
+        if (!myTeam || !opponentTeam || myTeam.length !== 5 || opponentTeam.length !== 5) {
+             return res.status(400).json({ error: 'Invalid input structure. Requires myTeam and opponentTeam arrays of size 5.' });
         }
         
-        allSelectedHeroes = [yourHero, ...allies, ...opponents];
+        const allHeroesWithRoles = [...myTeam, ...opponentTeam];
+        allSelectedHeroes = allHeroesWithRoles.map(h => h.hero);
         const uniqueHeroes = new Set();
-        let validationError = null;
+        const requiredRoles = new Set(['Safe Lane', 'Midlane', 'Offlane', 'Support', 'Hard Support']);
+        const teamRoles = new Set();
 
-        for (const heroName of allSelectedHeroes) {
-            const trimmedName = heroName?.trim(); // Handle potential non-strings safely
-            if (!trimmedName) { // Check for empty or non-string values
-                validationError = 'All hero selections must be non-empty valid names.';
+        for (const team of [myTeam, opponentTeam]) {
+            teamRoles.clear(); // Reset for each team
+            for (const { hero, role } of team) {
+                const trimmedHero = hero?.trim();
+                const trimmedRole = role?.trim();
+
+                if (!trimmedHero || !trimmedRole) {
+                    validationError = 'All hero and role selections must be non-empty.';
+                    break;
+                }
+                if (!VALID_HERO_NAMES_SET.has(trimmedHero)) {
+                    validationError = `Invalid hero name received: "${trimmedHero}".`;
+                    break;
+                }
+                 if (!requiredRoles.has(trimmedRole)) {
+                    validationError = `Invalid role received: "${trimmedRole}".`;
+                    break;
+                }
+                if (uniqueHeroes.has(trimmedHero)) {
+                    validationError = `Duplicate hero detected: "${trimmedHero}".`;
+                    break;
+                }
+                 if (teamRoles.has(trimmedRole)) {
+                    validationError = `Duplicate role detected on a team: "${trimmedRole}".`;
+                    break;
+                }
+                uniqueHeroes.add(trimmedHero);
+                teamRoles.add(trimmedRole);
+            }
+            if (validationError) break;
+             if (teamRoles.size !== 5) { // Check if all 5 unique roles are present per team
+                validationError = `Each team must have one of each role. Missing or duplicate roles found.`;
                 break;
             }
-            if (!VALID_HERO_NAMES_SET.has(trimmedName)) { // Use the hardcoded set
-                validationError = `Invalid hero name received: "${trimmedName}".`;
-                break;
-            }
-            if (uniqueHeroes.has(trimmedName)) {
-                validationError = `Duplicate hero detected: "${trimmedName}".`;
-                break;
-            }
-            uniqueHeroes.add(trimmedName);
         }
 
         if (validationError) {
@@ -111,42 +133,52 @@ app.post('/api/get-tips', async (req, res) => {
         }
         console.log('Backend validation passed for heroes:', allSelectedHeroes.join(', '));
 
-    } catch (validationError) { // Catch any unexpected errors during validation itself
-         console.error("Unexpected error during hero validation:", validationError);
+    } catch (err) { // Catch any unexpected errors during validation itself
+         console.error("Unexpected error during hero validation:", err);
          return res.status(500).json({ error: 'Server error during hero validation.' });
     }
     // --- End Backend Validation ---
 
+    // Find the user's hero and role from the validated myTeam array
+    const yourHeroData = myTeam[0]; // By convention from the front-end
+    const yourHeroName = yourHeroData.hero;
+    const yourHeroRole = yourHeroData.role;
+    
+    // Format teams for the prompt
+    const formatTeam = (team) => team.map(p => `${p.hero} (${p.role})`).join(', ');
+    const myTeamFormatted = formatTeam(myTeam);
+    const opponentTeamFormatted = formatTeam(opponentTeam);
+
     // Construct the *structured* prompt for the LLM
     const prompt = `
-As a Dota 2 expert coach, provide advice for playing ${yourHero} in a specific match.
-My allies are: ${allies.join(', ')}.
-My opponents are: ${opponents.join(', ')}.
+You are a Dota 2 expert coach, provide advice for playing ${yourHeroName} as the ${yourHeroRole} in a specific match.
+My team composition is: ${myTeamFormatted}.
+The opponent team composition is: ${opponentTeamFormatted}.
 
-**Assume the player understands Dota 2 basics but is not an expert (e.g., around Archon/Legend rank or learning the hero). Explain key concepts clearly and prioritize standard item builds and reliable strategies.**
-**IMPORTANT: Only suggest items currently available in the latest Dota 2 patch. Do NOT mention removed items like Stout Shield, Poor Man's Shield, etc.**
+**Assume the player understands Dota 2 basics but is not an expert (e.g., around Archon/Legend rank or learning the hero). Explain key concepts clearly and prioritize standard item builds and reliable strategies based on the provided roles.**
+**IMPORTANT: Only suggest items currently available in the latest Dota 2 patch. Do NOT mention removed items.**
 
 Please structure your advice clearly using the following Markdown headings exactly:
 
 ### Overview & Core Strategy
-(Brief summary of the overall game plan for ${yourHero} in this matchup, focusing on the most important goals for a less experienced player)
+(Brief summary of the overall game plan for ${yourHeroName} in this matchup, focusing on the most important goals for a less experienced player in the ${yourHeroRole} position)
 
 ### Early Game (Laning Phase)
-(Tips for the first ~10 minutes, including standard starting items, basic laning approach, simple kill opportunities, and common threats to avoid)
+(Tips for the first ~10 minutes based on the ${yourHeroRole} role, including standard starting items, basic laning approach against the opposing laner(s), simple kill opportunities, and common threats to avoid)
 
 ### Mid Game (~10-25 minutes)
-(Focus on safe objectives, core item progression, basic positioning in teamfights, and when to join fights vs. farm)
+(Focus on safe objectives, core item progression, basic positioning in teamfights, and when to join fights vs. farm, all tailored to the ${yourHeroRole} role)
 
 ### Late Game (25+ minutes)
-(Standard late-game item choices, simplified teamfight role, focusing on key objectives like Roshan or defending high ground, and 1-2 critical opponent abilities to be aware of)
+(Standard late-game item choices, simplified teamfight role, focusing on key objectives like Roshan or defending high ground, and 1-2 critical opponent abilities to be aware of, considering the ${yourHeroRole})
 
 ### Item Build Suggestions
-(Provide a list of standard core items and key situational items *currently in the game*, briefly explaining *why* they are good in this matchup for this skill level)
+(Provide a list of standard core items and key situational items *currently in the game*, explaining *why* they are good in this specific role and matchup for this skill level)
 
 ### Key Matchup Considerations
-(Highlight 1-2 crucial interactions, counters, or synergies most relevant to a beginner/intermediate player in this specific matchup)
+(Highlight 1-2 crucial interactions, counters, or synergies most relevant to a beginner/intermediate player in the ${yourHeroRole} role against the enemy team composition)
 
-Be specific and actionable, but avoid overly complex or highly advanced tactics. Explain the reasoning simply. Focus on advice relevant to this exact lineup configuration. Avoid generic hero descriptions.
+Be specific and actionable, but avoid overly complex or highly advanced tactics. Explain the reasoning simply. Focus on advice relevant to this exact lineup and role configuration. Avoid generic hero descriptions.
 `;
 
     try {
