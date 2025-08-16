@@ -143,6 +143,22 @@ app.post('/api/get-tips', async (req, res) => {
     const yourHeroData = myTeam[0]; // By convention from the front-end
     const yourHeroName = yourHeroData.hero;
     const yourHeroRole = yourHeroData.role;
+
+    // --- Determine Lane Matchups ---
+    let laneMatchupInfo = '';
+    const opponentSafelane = opponentTeam.find(p => p.role === 'Safe Lane')?.hero;
+    const opponentMidlane = opponentTeam.find(p => p.role === 'Midlane')?.hero;
+    const opponentOfflane = opponentTeam.find(p => p.role === 'Offlane')?.hero;
+    const opponentSupport = opponentTeam.find(p => p.role === 'Support')?.hero;
+    const opponentHardSupport = opponentTeam.find(p => p.role === 'Hard Support')?.hero;
+
+    if (yourHeroRole === 'Safe Lane' || yourHeroRole === 'Hard Support') {
+        laneMatchupInfo = `You will be laning against ${opponentOfflane} and ${opponentSupport}.`;
+    } else if (yourHeroRole === 'Midlane') {
+        laneMatchupInfo = `You will be laning against ${opponentMidlane}.`;
+    } else if (yourHeroRole === 'Offlane' || yourHeroRole === 'Support') {
+        laneMatchupInfo = `You will be laning against ${opponentSafelane} and ${opponentHardSupport}.`;
+    }
     
     // Format teams for the prompt
     const formatTeam = (team) => team.map(p => `${p.hero} (${p.role})`).join(', ');
@@ -164,7 +180,7 @@ Please structure your advice clearly using the following Markdown headings exact
 (Brief summary of the overall game plan for ${yourHeroName} in this matchup, focusing on the most important goals for a less experienced player in the ${yourHeroRole} position)
 
 ### Early Game (Laning Phase)
-(Tips for the first ~10 minutes based on the ${yourHeroRole} role, including standard starting items, basic laning approach against the opposing laner(s), simple kill opportunities, and common threats to avoid)
+(Tips for the first ~10 minutes. ${laneMatchupInfo} Focus on standard starting items, basic laning approach against them, simple kill opportunities, and common threats to avoid)
 
 ### Mid Game (~10-25 minutes)
 (Focus on safe objectives, core item progression, basic positioning in teamfights, and when to join fights vs. farm, all tailored to the ${yourHeroRole} role)
