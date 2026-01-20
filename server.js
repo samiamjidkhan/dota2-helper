@@ -65,41 +65,6 @@ const DOTA_HERO_NAMES = [
 
 const VALID_HERO_NAMES_SET = new Set(DOTA_HERO_NAMES);
 
-// Cache for OpenDota data (simple in-memory, 1 hour TTL)
-let heroStatsCache = { data: null, timestamp: 0 };
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-
-async function fetchHeroStats() {
-  const now = Date.now();
-  if (heroStatsCache.data && (now - heroStatsCache.timestamp) < CACHE_TTL) {
-    console.log('Using cached OpenDota hero stats');
-    return heroStatsCache.data;
-  }
-
-  try {
-    console.log('Fetching fresh hero stats from OpenDota API...');
-    const response = await axios.get('https://api.opendota.com/api/heroStats');
-    heroStatsCache = { data: response.data, timestamp: now };
-    console.log('OpenDota API: Successfully fetched hero stats');
-    return response.data;
-  } catch (error) {
-    console.error('OpenDota API error:', error.message);
-    return heroStatsCache.data || []; // Return stale cache if available
-  }
-}
-
-function getHeroMetaContext(heroStats, heroNames) {
-  // Filter stats for selected heroes, calculate win rates for bracket 3-4 (Archon/Legend)
-  const relevantStats = heroStats.filter(h => heroNames.includes(h.localized_name));
-
-  return relevantStats.map(hero => {
-    const picks = (hero['3_pick'] || 0) + (hero['4_pick'] || 0);
-    const wins = (hero['3_win'] || 0) + (hero['4_win'] || 0);
-    const winRate = picks > 0 ? ((wins / picks) * 100).toFixed(1) : 'N/A';
-    return `${hero.localized_name}: ${winRate}% win rate (Archon/Legend)`;
-  }).join('\n');
-}
-
 // Get current patch version
 function getCurrentPatch() {
   const { patch } = getDotaConstants();
@@ -300,10 +265,6 @@ app.post('/api/get-tips', async (req, res) => {
         laneMatchupInfo = `You will be laning against ${opponentSafelane} and ${opponentHardSupport}.`;
     }
 
-    // Fetch current meta data from OpenDota
-    const heroStats = await fetchHeroStats();
-    const metaContext = getHeroMetaContext(heroStats, allSelectedHeroes);
-
     // Get current patch and game data from dotaconstants
     const currentPatch = getCurrentPatch();
     const yourHeroAbilities = getHeroAbilitiesContext(yourHeroName);
@@ -328,9 +289,6 @@ ${yourHeroAbilities}
 
 **Available Items for ${yourHeroRole} (with current stats):**
 ${itemContext}
-
-**Current Meta Statistics (from OpenDota - reflects actual gameplay data):**
-${metaContext}
 
 **Assume the player understands Dota 2 basics but is not an expert (e.g., around Archon/Legend rank or learning the hero). Explain key concepts clearly and prioritize standard item builds and reliable strategies based on the provided roles.**
 **IMPORTANT: Use ONLY the items and ability values provided above. These are the current patch values.**
