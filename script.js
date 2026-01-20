@@ -236,62 +236,123 @@ heroInputs.forEach(input => {
     });
 });
 
-// Simple Markdown to Structured HTML Converter
-// Handles specific headers from the refined prompt
+// Enhanced Markdown to Structured HTML Converter
+// Handles headers, lists, tables, and inline formatting
 function formatStructuredOutput(text) {
     let html = '';
     const lines = text.split('\n');
-    let currentList = null; // To track if we are inside a list
+    let currentList = null;
+    let currentListType = null;
+    let inTable = false;
+    let tableRows = [];
 
-    lines.forEach(line => {
-        line = line.trim();
-        // First, handle **bold** and *italic*
-        line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
-        line = line.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');   // Italic (using single asterisks)
-        // Note: Could also add support for _italic_ if needed: line = line.replace(/_([^_]+?)_/g, '<em>$1</em>');
+    // Helper to process inline formatting
+    function processInline(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+            .replace(/\*([^\*]+?)\*/g, '<em>$1</em>')          // Italic
+            .replace(/`([^`]+)`/g, '<code>$1</code>')          // Inline code
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>'); // Links
+    }
 
-        if (line.startsWith('### ')) {
-            // Close previous list if open
-            if (currentList) {
-                html += `</ul>\n`;
-                currentList = null;
+    // Helper to close current list
+    function closeList() {
+        if (currentList) {
+            html += currentListType === 'ol' ? '</ol>\n' : '</ul>\n';
+            currentList = null;
+            currentListType = null;
+        }
+    }
+
+    // Helper to render table
+    function renderTable() {
+        if (tableRows.length === 0) return;
+
+        html += '<div class="table-wrapper"><table>\n';
+        tableRows.forEach((row, index) => {
+            const cells = row.split('|').filter(cell => cell.trim() !== '');
+            // Skip separator rows (|---|---|)
+            if (cells.every(cell => /^[\s-:]+$/.test(cell))) {
+                return;
             }
-            html += `<h3>${line.substring(4).trim()}</h3>\n`;
-        } else if (line.startsWith('* ') || line.startsWith('- ')) {
-            // Start list if not already started
-            if (!currentList) {
-                html += `<ul>\n`;
-                currentList = 'ul';
+            const tag = index === 0 ? 'th' : 'td';
+            const rowClass = index === 0 ? 'table-header' : (index % 2 === 0 ? 'table-row-even' : 'table-row-odd');
+            html += `<tr class="${rowClass}">`;
+            cells.forEach(cell => {
+                html += `<${tag}>${processInline(cell.trim())}</${tag}>`;
+            });
+            html += '</tr>\n';
+        });
+        html += '</table></div>\n';
+        tableRows = [];
+        inTable = false;
+    }
+
+    lines.forEach((line, index) => {
+        const trimmedLine = line.trim();
+
+        // Check for table rows (lines starting with |)
+        if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+            closeList();
+            inTable = true;
+            tableRows.push(trimmedLine);
+            return;
+        } else if (inTable) {
+            renderTable();
+        }
+
+        // Headers
+        if (trimmedLine.startsWith('### ')) {
+            closeList();
+            html += `<h3>${processInline(trimmedLine.substring(4).trim())}</h3>\n`;
+        } else if (trimmedLine.startsWith('## ')) {
+            closeList();
+            html += `<h4>${processInline(trimmedLine.substring(3).trim())}</h4>\n`;
+        }
+        // Numbered list (1. 2. 3. etc)
+        else if (/^\d+\.\s/.test(trimmedLine)) {
+            if (currentListType !== 'ol') {
+                closeList();
+                html += '<ol>\n';
+                currentList = true;
+                currentListType = 'ol';
             }
-             // IMPORTANT: Text inside list items was already processed for bold/italic above
-            html += `<li>${line.substring(2).trim()}</li>\n`; 
-        } else if (line === '' || line === '---') {
-             // Close previous list on empty line or separator
-             if (currentList) {
-                html += `</ul>\n`;
-                currentList = null;
-             }
-             if(line === '---') html += '<hr>\n'; else html += '<br>\n'; // Treat empty line as <br>
-        } else if (line) { // Non-empty, non-header, non-list line
-             // Close previous list if open
-            if (currentList) {
-                html += `</ul>\n`;
-                currentList = null;
+            const content = trimmedLine.replace(/^\d+\.\s/, '');
+            html += `<li>${processInline(content)}</li>\n`;
+        }
+        // Unordered list
+        else if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
+            if (currentListType !== 'ul') {
+                closeList();
+                html += '<ul>\n';
+                currentList = true;
+                currentListType = 'ul';
             }
-            // IMPORTANT: Text inside paragraph was already processed for bold/italic above
-            html += `<p>${line}</p>\n`; 
+            html += `<li>${processInline(trimmedLine.substring(2).trim())}</li>\n`;
+        }
+        // Horizontal rule
+        else if (trimmedLine === '---' || trimmedLine === '***') {
+            closeList();
+            html += '<hr>\n';
+        }
+        // Empty line
+        else if (trimmedLine === '') {
+            closeList();
+        }
+        // Regular paragraph
+        else if (trimmedLine) {
+            closeList();
+            html += `<p>${processInline(trimmedLine)}</p>\n`;
         }
     });
 
-    // Close any list left open at the end
-    if (currentList) {
-        html += `</ul>\n`;
-    }
+    // Close any remaining open elements
+    closeList();
+    if (inTable) renderTable();
 
-    // Basic cleanup
-    html = html.replace(/(\n){2,}/g, '\n'); 
-    html = html.replace(/(<br>\s*){2,}/g, '<br>'); 
-    html = html.replace(/<p><\/p>/g, ''); 
+    // Cleanup
+    html = html.replace(/(<p><\/p>\s*)+/g, '');
+    html = html.replace(/(<br>\s*){3,}/g, '<br><br>');
 
     return html;
 }

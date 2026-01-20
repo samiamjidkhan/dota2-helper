@@ -3,6 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors'); // Import cors
 const path = require('path'); // Import path module
+const dotaconstants = require('dotaconstants'); // Dota 2 game data (items, abilities, heroes)
 
 const app = express();
 // Use environment variable for port or default to 3002
@@ -17,8 +18,8 @@ app.use(express.json()); // Parse JSON request bodies
 const staticFilesPath = __dirname; 
 app.use(express.static(staticFilesPath)); 
 
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GOOGLE_API_KEY}`;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // --- Hardcoded Hero Data ---
 const DOTA_HERO_NAMES = [
@@ -49,6 +50,133 @@ const DOTA_HERO_NAMES = [
 ].sort(); // Keep sorted for consistency
 
 const VALID_HERO_NAMES_SET = new Set(DOTA_HERO_NAMES);
+
+// Cache for OpenDota data (simple in-memory, 1 hour TTL)
+let heroStatsCache = { data: null, timestamp: 0 };
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+async function fetchHeroStats() {
+  const now = Date.now();
+  if (heroStatsCache.data && (now - heroStatsCache.timestamp) < CACHE_TTL) {
+    console.log('Using cached OpenDota hero stats');
+    return heroStatsCache.data;
+  }
+
+  try {
+    console.log('Fetching fresh hero stats from OpenDota API...');
+    const response = await axios.get('https://api.opendota.com/api/heroStats');
+    heroStatsCache = { data: response.data, timestamp: now };
+    console.log('OpenDota API: Successfully fetched hero stats');
+    return response.data;
+  } catch (error) {
+    console.error('OpenDota API error:', error.message);
+    return heroStatsCache.data || []; // Return stale cache if available
+  }
+}
+
+function getHeroMetaContext(heroStats, heroNames) {
+  // Filter stats for selected heroes, calculate win rates for bracket 3-4 (Archon/Legend)
+  const relevantStats = heroStats.filter(h => heroNames.includes(h.localized_name));
+
+  return relevantStats.map(hero => {
+    const picks = (hero['3_pick'] || 0) + (hero['4_pick'] || 0);
+    const wins = (hero['3_win'] || 0) + (hero['4_win'] || 0);
+    const winRate = picks > 0 ? ((wins / picks) * 100).toFixed(1) : 'N/A';
+    return `${hero.localized_name}: ${winRate}% win rate (Archon/Legend)`;
+  }).join('\n');
+}
+
+// Get current patch version
+function getCurrentPatch() {
+  const patches = dotaconstants.patch;
+  return patches[patches.length - 1]?.name || 'Unknown';
+}
+
+// Get hero abilities with current stats from dotaconstants
+function getHeroAbilitiesContext(heroName) {
+  const heroes = dotaconstants.heroes;
+  const hero = Object.values(heroes).find(h => h.localized_name === heroName);
+  if (!hero) return '';
+
+  const heroAbilities = dotaconstants.hero_abilities[hero.name];
+  if (!heroAbilities) return '';
+
+  const abilities = dotaconstants.abilities;
+  const abilityDetails = heroAbilities.abilities
+    .map(abilityName => abilities[abilityName])
+    .filter(a => a && a.dname && a.desc)
+    .map(a => {
+      let details = `**${a.dname}**: ${a.desc}`;
+      if (a.attrib && a.attrib.length > 0) {
+        const stats = a.attrib
+          .filter(attr => attr.header || attr.key)
+          .slice(0, 3) // Limit to 3 key stats
+          .map(attr => {
+            const value = Array.isArray(attr.value) ? attr.value.join('/') : attr.value;
+            return `${attr.header || attr.key}: ${value}`;
+          })
+          .join(', ');
+        if (stats) details += ` [${stats}]`;
+      }
+      return details;
+    });
+
+  // Add facets if available
+  let facetInfo = '';
+  if (heroAbilities.facets && heroAbilities.facets.length > 0) {
+    const facets = heroAbilities.facets
+      .filter(f => f.title && f.description && !f.deprecated)
+      .map(f => `${f.title}: ${f.description}`)
+      .join('\n  - ');
+    if (facets) facetInfo = `\nFacets:\n  - ${facets}`;
+  }
+
+  return abilityDetails.join('\n') + facetInfo;
+}
+
+// Get item data for commonly built items
+function getItemContext(itemNames) {
+  const items = dotaconstants.items;
+  return itemNames
+    .map(name => {
+      const item = items[name];
+      if (!item || !item.dname) return null;
+
+      let details = `**${item.dname}** (${item.cost} gold)`;
+
+      // Add key attributes
+      if (item.attrib && item.attrib.length > 0) {
+        const attrs = item.attrib
+          .filter(a => a.display || a.key)
+          .slice(0, 4)
+          .map(a => {
+            const display = a.display ? a.display.replace('{value}', a.value) : `${a.key}: ${a.value}`;
+            return display;
+          })
+          .join(', ');
+        if (attrs) details += `: ${attrs}`;
+      }
+
+      // Add active/passive ability
+      if (item.abilities && item.abilities.length > 0) {
+        const ability = item.abilities[0];
+        details += ` | ${ability.type}: ${ability.title}`;
+      }
+
+      return details;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+// Common items by role for context
+const ROLE_ITEMS = {
+  'Safe Lane': ['power_treads', 'battle_fury', 'black_king_bar', 'butterfly', 'satanic', 'monkey_king_bar', 'daedalus', 'manta', 'disperser'],
+  'Midlane': ['power_treads', 'bottle', 'black_king_bar', 'blink', 'orchid', 'bloodthorn', 'aghanims_shard', 'ultimate_scepter', 'sheepstick'],
+  'Offlane': ['phase_boots', 'blink', 'blade_mail', 'black_king_bar', 'pipe', 'crimson_guard', 'lotus_orb', 'assault', 'heart'],
+  'Support': ['arcane_boots', 'magic_wand', 'force_staff', 'glimmer_cape', 'aether_lens', 'aghanims_shard', 'ultimate_scepter', 'blink'],
+  'Hard Support': ['arcane_boots', 'magic_wand', 'force_staff', 'glimmer_cape', 'ghost', 'solar_crest', 'aeon_disk', 'holy_locket']
+};
 
 // Route to serve the main HTML file
 app.get('/', (req, res) => {
@@ -159,7 +287,17 @@ app.post('/api/get-tips', async (req, res) => {
     } else if (yourHeroRole === 'Offlane' || yourHeroRole === 'Support') {
         laneMatchupInfo = `You will be laning against ${opponentSafelane} and ${opponentHardSupport}.`;
     }
-    
+
+    // Fetch current meta data from OpenDota
+    const heroStats = await fetchHeroStats();
+    const metaContext = getHeroMetaContext(heroStats, allSelectedHeroes);
+
+    // Get current patch and game data from dotaconstants
+    const currentPatch = getCurrentPatch();
+    const yourHeroAbilities = getHeroAbilitiesContext(yourHeroName);
+    const roleItems = ROLE_ITEMS[yourHeroRole] || ROLE_ITEMS['Support'];
+    const itemContext = getItemContext(roleItems);
+
     // Format teams for the prompt
     const formatTeam = (team) => team.map(p => `${p.hero} (${p.role})`).join(', ');
     const myTeamFormatted = formatTeam(myTeam);
@@ -171,8 +309,19 @@ You are a Dota 2 expert coach, provide advice for playing ${yourHeroName} as the
 My team composition is: ${myTeamFormatted}.
 The opponent team composition is: ${opponentTeamFormatted}.
 
+**Current Patch: ${currentPatch}**
+
+**${yourHeroName}'s Current Abilities (Patch ${currentPatch}):**
+${yourHeroAbilities}
+
+**Available Items for ${yourHeroRole} (with current stats):**
+${itemContext}
+
+**Current Meta Statistics (from OpenDota - reflects actual gameplay data):**
+${metaContext}
+
 **Assume the player understands Dota 2 basics but is not an expert (e.g., around Archon/Legend rank or learning the hero). Explain key concepts clearly and prioritize standard item builds and reliable strategies based on the provided roles.**
-**IMPORTANT: Only suggest items currently available in the latest Dota 2 patch. Do NOT mention removed items.**
+**IMPORTANT: Use ONLY the items and ability values provided above. These are the current patch values.**
 
 Please structure your advice clearly using the following Markdown headings exactly:
 
@@ -198,35 +347,41 @@ Be specific and actionable, but avoid overly complex or highly advanced tactics.
 `;
 
     try {
-        console.log('Sending structured prompt to Gemini...'); 
-        const geminiResponse = await axios.post(GEMINI_API_URL, {
-            contents: [{ parts: [{ text: prompt }] }]
+        console.log('Sending structured prompt to Groq (GPT-OSS 120B)...');
+        const groqResponse = await axios.post(GROQ_API_URL, {
+            model: 'openai/gpt-oss-120b',
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            temperature: 1,
+            max_completion_tokens: 8192,
+            top_p: 1,
+            reasoning_effort: 'medium'
         }, {
-             headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            }
         });
 
-        console.log('Received response from Gemini. Candidates exist:', !!geminiResponse.data.candidates); 
+        console.log('Received response from Groq. Choices exist:', !!groqResponse.data.choices);
 
-        const candidates = geminiResponse.data.candidates;
-        if (candidates && candidates.length > 0 && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts.length > 0) {
-            const tips = candidates[0].content.parts[0].text;
+        const choices = groqResponse.data.choices;
+        if (choices && choices.length > 0 && choices[0].message && choices[0].message.content) {
+            const tips = choices[0].message.content;
             res.json({ tips });
         } else {
-            console.error('Unexpected response structure from Gemini:', JSON.stringify(geminiResponse.data, null, 2));
-            let detail = 'Failed to parse response from AI model.';
-            if (geminiResponse.data?.promptFeedback?.blockReason) {
-                 detail = `AI model blocked the prompt. Reason: ${geminiResponse.data.promptFeedback.blockReason}`;
-                 if(geminiResponse.data.promptFeedback.safetyRatings) {
-                    detail += ` Details: ${JSON.stringify(geminiResponse.data.promptFeedback.safetyRatings)}`;
-                 }
-            }
-            res.status(500).json({ error: detail });
+            console.error('Unexpected response structure from Groq:', JSON.stringify(groqResponse.data, null, 2));
+            res.status(500).json({ error: 'Failed to parse response from AI model.' });
         }
 
     } catch (error) {
-        console.error('Error calling Gemini API: Status', error.response?.status);
+        console.error('Error calling Groq API: Status', error.response?.status);
         console.error(error.response?.data ? JSON.stringify(error.response.data) : error.message);
-        
+
         let errorMessage = 'Failed to get tips from AI model.';
         if (error.response?.data?.error?.message) {
             errorMessage = `AI Model Error: ${error.response.data.error.message}`;
