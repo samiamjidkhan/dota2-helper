@@ -371,7 +371,7 @@ Be specific and actionable, but avoid overly complex or highly advanced tactics.
             temperature: 1,
             max_completion_tokens: 8192,
             top_p: 1,
-            reasoning_effort: 'medium'
+            reasoning_effort: 'low'
         }, {
             headers: {
                 'Content-Type': 'application/json',
