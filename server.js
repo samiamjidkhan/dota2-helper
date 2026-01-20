@@ -3,7 +3,21 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors'); // Import cors
 const path = require('path'); // Import path module
-const dotaconstants = require('dotaconstants'); // Dota 2 game data (items, abilities, heroes)
+// Lazy load dotaconstants to avoid issues with Vercel serverless function size
+let dotaconstantsData = null;
+function getDotaConstants() {
+  if (!dotaconstantsData) {
+    const dc = require('dotaconstants');
+    dotaconstantsData = {
+      heroes: dc.heroes,
+      abilities: dc.abilities,
+      hero_abilities: dc.hero_abilities,
+      items: dc.items,
+      patch: dc.patch
+    };
+  }
+  return dotaconstantsData;
+}
 
 const app = express();
 // Use environment variable for port or default to 3002
@@ -88,21 +102,19 @@ function getHeroMetaContext(heroStats, heroNames) {
 
 // Get current patch version
 function getCurrentPatch() {
-  const patches = dotaconstants.patch;
-  return patches[patches.length - 1]?.name || 'Unknown';
+  const { patch } = getDotaConstants();
+  return patch[patch.length - 1]?.name || 'Unknown';
 }
 
 // Get hero abilities with current stats from dotaconstants
 function getHeroAbilitiesContext(heroName) {
-  const heroes = dotaconstants.heroes;
+  const { heroes, hero_abilities, abilities } = getDotaConstants();
   const hero = Object.values(heroes).find(h => h.localized_name === heroName);
   if (!hero) return '';
 
-  const heroAbilities = dotaconstants.hero_abilities[hero.name];
-  if (!heroAbilities) return '';
-
-  const abilities = dotaconstants.abilities;
-  const abilityDetails = heroAbilities.abilities
+  const heroAbilitiesData = hero_abilities[hero.name];
+  if (!heroAbilitiesData) return '';
+  const abilityDetails = heroAbilitiesData.abilities
     .map(abilityName => abilities[abilityName])
     .filter(a => a && a.dname && a.desc)
     .map(a => {
@@ -123,8 +135,8 @@ function getHeroAbilitiesContext(heroName) {
 
   // Add facets if available
   let facetInfo = '';
-  if (heroAbilities.facets && heroAbilities.facets.length > 0) {
-    const facets = heroAbilities.facets
+  if (heroAbilitiesData.facets && heroAbilitiesData.facets.length > 0) {
+    const facets = heroAbilitiesData.facets
       .filter(f => f.title && f.description && !f.deprecated)
       .map(f => `${f.title}: ${f.description}`)
       .join('\n  - ');
@@ -136,7 +148,7 @@ function getHeroAbilitiesContext(heroName) {
 
 // Get item data for commonly built items
 function getItemContext(itemNames) {
-  const items = dotaconstants.items;
+  const { items } = getDotaConstants();
   return itemNames
     .map(name => {
       const item = items[name];
