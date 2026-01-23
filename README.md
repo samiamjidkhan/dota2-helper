@@ -2,26 +2,28 @@
 
 [![Vercel Deployment](https://vercelbadge.vercel.app/api/samiamjidkhan/dota2-helper)](https://www.dota2helper.com/)
 
-A simple web application that provides item build suggestions and gameplay tips for Dota 2 players based on their team and opponent hero selections.
+An AI-powered web application that provides gameplay tips, skill builds, and item recommendations for Dota 2 players based on their team composition and matchup.
 
 **Live Site:** [https://www.dota2helper.com/](https://www.dota2helper.com/)
 
 ## Features
 
-*   Select your hero, 4 allies, and 5 opponents from a filterable list.
-*   Receive AI-generated tips tailored to the specific matchup and targeted towards beginner/intermediate players.
-*   Structured advice covering different game stages (Early, Mid, Late), item builds, and key considerations.
-*   Responsive design for usability on different screen sizes.
-*   Dark theme inspired by Dota 2 aesthetics.
+*   Select your hero, role, 4 allies, and 5 opponents from a filterable list with abbreviation support (e.g., "am" → "Anti-Mage").
+*   **Current patch data** - Hero abilities and item stats pulled from `dotaconstants` (updated with each Dota 2 patch).
+*   **Skill build recommendations** - Ability leveling order with reasoning.
+*   **Lane matchup analysis** - Enemy abilities context for your specific lane opponents.
+*   **Teammate synergies** - Combo suggestions with your allies.
+*   Structured advice covering laning, mid game, late game, and item progression.
+*   Responsive dark theme inspired by Dota 2 aesthetics.
 
 ## How it Works
 
-1.  The frontend (HTML, CSS, JavaScript) captures the selected hero names.
-2.  On submission, the data is sent to a Node.js backend API running as a serverless function on Vercel.
-3.  The backend validates the hero selections against a hardcoded list.
-4.  A structured prompt, including the selected heroes and guidance for the target skill level, is sent to the Google Gemini API.
-5.  The backend receives the text response from Gemini.
-6.  The frontend formats the Markdown-like response into structured HTML and displays it to the user.
+1.  The frontend captures hero selections and roles.
+2.  Data is sent to a Node.js backend API running as a serverless function on Vercel.
+3.  The backend validates heroes and determines lane matchups based on roles.
+4.  Current hero abilities and item data are loaded from `dotaconstants` (Dota 2 game data package).
+5.  A structured prompt with ability stats, item references, and matchup context is sent to **Groq API** (GPT-OSS 120B).
+6.  The AI response is rendered as formatted HTML with tables, lists, and styled sections.
 
 ## Running Locally
 
@@ -36,15 +38,22 @@ A simple web application that provides item build suggestions and gameplay tips 
     ```
 3.  **Create Environment File:**
     Create a file named `.env` in the project root.
-    Add your Google AI API Key (obtainable from [Google AI Studio](https://aistudio.google.com/app/apikey)) to this file:
+    Add your Groq API Key (obtainable from [Groq Console](https://console.groq.com/keys)) to this file:
     ```
-    GOOGLE_API_KEY=YOUR_API_KEY_HERE
+    GROQ_API_KEY=YOUR_API_KEY_HERE
     ```
 4.  **Run the development server:**
     ```bash
     npm run dev
     ```
     This will typically start the server on `http://localhost:3002`.
+
+## Tech Stack
+
+*   **Frontend:** Vanilla JavaScript, HTML, CSS
+*   **Backend:** Node.js + Express (serverless on Vercel)
+*   **AI:** Groq API (GPT-OSS 120B)
+*   **Game Data:** [dotaconstants](https://github.com/odota/dotaconstants) - parsed Dota 2 game files
 
 ## Deployment
 
