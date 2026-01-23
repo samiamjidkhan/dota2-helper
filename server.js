@@ -188,13 +188,40 @@ app.get('/api/debug', async (req, res) => {
     }
 });
 
-// Common items by role for context
+// Get brief enemy abilities (key threats to watch)
+async function getEnemyAbilitiesBrief(heroNames) {
+  const { heroes, hero_abilities, abilities } = await getDotaConstants();
+
+  return heroNames.map(heroName => {
+    const hero = Object.values(heroes).find(h => h.localized_name === heroName);
+    if (!hero) return null;
+
+    const heroAbilitiesData = hero_abilities[hero.name];
+    if (!heroAbilitiesData) return null;
+
+    // Get ultimate and one key basic ability
+    const abilityList = heroAbilitiesData.abilities
+      .map(name => abilities[name])
+      .filter(a => a && a.dname && a.behavior !== 'Passive');
+
+    const ultimate = abilityList.find(a => a.ultimate);
+    const keyAbility = abilityList.find(a => !a.ultimate && a.desc);
+
+    let result = `**${heroName}**: `;
+    if (keyAbility) result += `${keyAbility.dname} - ${keyAbility.desc?.slice(0, 100)}...`;
+    if (ultimate) result += ` | ULT: ${ultimate.dname}`;
+
+    return result;
+  }).filter(Boolean).join('\n');
+}
+
+// Common items by role for context (including starting items)
 const ROLE_ITEMS = {
-  'Safe Lane': ['power_treads', 'battle_fury', 'black_king_bar', 'butterfly', 'satanic', 'monkey_king_bar', 'daedalus', 'manta', 'disperser'],
-  'Midlane': ['power_treads', 'bottle', 'black_king_bar', 'blink', 'orchid', 'bloodthorn', 'aghanims_shard', 'ultimate_scepter', 'sheepstick'],
-  'Offlane': ['phase_boots', 'blink', 'blade_mail', 'black_king_bar', 'pipe', 'crimson_guard', 'lotus_orb', 'assault', 'heart'],
-  'Support': ['arcane_boots', 'magic_wand', 'force_staff', 'glimmer_cape', 'aether_lens', 'aghanims_shard', 'ultimate_scepter', 'blink'],
-  'Hard Support': ['arcane_boots', 'magic_wand', 'force_staff', 'glimmer_cape', 'ghost', 'solar_crest', 'aeon_disk', 'holy_locket']
+  'Safe Lane': ['tango', 'quelling_blade', 'slippers', 'branches', 'magic_wand', 'power_treads', 'battle_fury', 'black_king_bar', 'butterfly', 'satanic', 'manta', 'disperser'],
+  'Midlane': ['tango', 'faerie_fire', 'branches', 'bottle', 'magic_wand', 'power_treads', 'black_king_bar', 'blink', 'orchid', 'bloodthorn', 'aghanims_shard', 'ultimate_scepter'],
+  'Offlane': ['tango', 'quelling_blade', 'ring_of_protection', 'branches', 'magic_wand', 'phase_boots', 'soul_ring', 'blink', 'blade_mail', 'black_king_bar', 'pipe', 'lotus_orb', 'assault'],
+  'Support': ['tango', 'blood_grenade', 'enchanted_mango', 'branches', 'magic_wand', 'arcane_boots', 'force_staff', 'glimmer_cape', 'aghanims_shard', 'ultimate_scepter', 'blink'],
+  'Hard Support': ['tango', 'clarity', 'blood_grenade', 'branches', 'magic_wand', 'arcane_boots', 'force_staff', 'glimmer_cape', 'ghost', 'solar_crest', 'aeon_disk']
 };
 
 // Route to serve the main HTML file
@@ -313,50 +340,70 @@ app.post('/api/get-tips', async (req, res) => {
     const roleItems = ROLE_ITEMS[yourHeroRole] || ROLE_ITEMS['Support'];
     const itemContext = await getItemContext(roleItems);
 
+    // Get lane opponents for enemy abilities context
+    let laneOpponents = [];
+    if (yourHeroRole === 'Safe Lane' || yourHeroRole === 'Hard Support') {
+        laneOpponents = [opponentOfflane, opponentSupport].filter(Boolean);
+    } else if (yourHeroRole === 'Midlane') {
+        laneOpponents = [opponentMidlane].filter(Boolean);
+    } else if (yourHeroRole === 'Offlane' || yourHeroRole === 'Support') {
+        laneOpponents = [opponentSafelane, opponentHardSupport].filter(Boolean);
+    }
+    const enemyAbilitiesContext = await getEnemyAbilitiesBrief(laneOpponents);
+
+    // Get teammates for synergy context
+    const teammates = myTeam.filter(p => p.hero !== yourHeroName).map(p => `${p.hero} (${p.role})`);
+
     // Format teams for the prompt
     const formatTeam = (team) => team.map(p => `${p.hero} (${p.role})`).join(', ');
     const myTeamFormatted = formatTeam(myTeam);
     const opponentTeamFormatted = formatTeam(opponentTeam);
 
     // Construct the *structured* prompt for the LLM
-    const prompt = `
-You are a Dota 2 expert coach, provide advice for playing ${yourHeroName} as the ${yourHeroRole} in a specific match.
-My team composition is: ${myTeamFormatted}.
-The opponent team composition is: ${opponentTeamFormatted}.
+    const prompt = `You are a Dota 2 coach. Advise on playing **${yourHeroName}** as **${yourHeroRole}** (Patch ${currentPatch}).
 
-**Current Patch: ${currentPatch}**
+**Teams:**
+- Allies: ${myTeamFormatted}
+- Enemies: ${opponentTeamFormatted}
 
-**${yourHeroName}'s Current Abilities (Patch ${currentPatch}):**
+**Your Abilities:**
 ${yourHeroAbilities}
 
-**Available Items for ${yourHeroRole} (with current stats):**
+**Lane Opponents' Key Abilities:**
+${enemyAbilitiesContext || 'N/A'}
+
+**Items Reference (${yourHeroRole}):**
 ${itemContext}
 
-**Assume the player understands Dota 2 basics but is not an expert (e.g., around Archon/Legend rank or learning the hero). Explain key concepts clearly and prioritize standard item builds and reliable strategies based on the provided roles.**
-**IMPORTANT: Use ONLY the items and ability values provided above. These are the current patch values.**
+${laneMatchupInfo}
 
-Please structure your advice clearly using the following Markdown headings exactly:
+**Respond with these sections:**
 
-### Overview & Core Strategy
-(Brief summary of the overall game plan for ${yourHeroName} in this matchup, focusing on the most important goals for a less experienced player in the ${yourHeroRole} position)
+### Overview
+2-3 sentences on your win condition and role in this matchup.
 
-### Early Game (Laning Phase)
-(Tips for the first ~10 minutes. ${laneMatchupInfo} Focus on standard starting items, basic laning approach against them, simple kill opportunities, and common threats to avoid)
+### Skill Build
+Recommended ability order for levels 1-6 and which to max first. Explain why.
 
-### Mid Game (~10-25 minutes)
-(Focus on safe objectives, core item progression, basic positioning in teamfights, and when to join fights vs. farm, all tailored to the ${yourHeroRole} role)
+### Laning Phase (0-10 min)
+Starting items, how to trade with lane opponents, kill potential, and threats to avoid.
 
-### Late Game (25+ minutes)
-(Standard late-game item choices, simplified teamfight role, focusing on key objectives like Roshan or defending high ground, and 1-2 critical opponent abilities to be aware of, considering the ${yourHeroRole})
+### Mid Game (10-25 min)
+Core items timing, when to fight vs farm, positioning in teamfights.
 
-### Item Build Suggestions
-(Provide a list of standard core items and key situational items *currently in the game*, explaining *why* they are good in this specific role and matchup for this skill level)
+### Late Game (25+ min)
+Final items, teamfight role, key objectives (Roshan, high ground).
 
-### Key Matchup Considerations
-(Highlight 1-2 crucial interactions, counters, or synergies most relevant to a beginner/intermediate player in the ${yourHeroRole} role against the enemy team composition)
+### Item Build
+List starting → early → core → situational items. Explain key choices for this matchup.
 
-Be specific and actionable, but avoid overly complex or highly advanced tactics. Explain the reasoning simply. Focus on advice relevant to this exact lineup and role configuration. Avoid generic hero descriptions.
-`;
+### Teammate Synergies
+How to combo with: ${teammates.join(', ')}. Mention 1-2 specific ability interactions.
+
+### Enemy Threats
+Key abilities to avoid and how to counter them.
+
+Be specific to this matchup. No generic advice.`;
 
     try {
         console.log('Sending structured prompt to Groq (GPT-OSS 120B)...');
