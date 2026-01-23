@@ -146,6 +146,48 @@ function getItemContext(itemNames) {
     .join('\n');
 }
 
+// Debug endpoint to test components
+app.get('/api/debug', async (req, res) => {
+    const results = { timestamps: {} };
+
+    try {
+        // Test 1: Basic response
+        results.timestamps.start = Date.now();
+        results.step1_basic = 'OK';
+
+        // Test 2: Load dotaconstants
+        const dcStart = Date.now();
+        const dc = getDotaConstants();
+        results.timestamps.dotaconstants = Date.now() - dcStart;
+        results.step2_dotaconstants = dc.patch ? 'OK' : 'FAILED';
+        results.patch = dc.patch[dc.patch.length - 1]?.name;
+
+        // Test 3: Simple Groq API call
+        const groqStart = Date.now();
+        const groqResponse = await axios.post(GROQ_API_URL, {
+            model: 'openai/gpt-oss-120b',
+            messages: [{ role: 'user', content: 'Say "OK" and nothing else.' }],
+            max_completion_tokens: 10,
+            reasoning_effort: 'low'
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            }
+        });
+        results.timestamps.groq = Date.now() - groqStart;
+        results.step3_groq = groqResponse.data.choices ? 'OK' : 'FAILED';
+        results.groq_response = groqResponse.data.choices[0]?.message?.content;
+
+        results.timestamps.total = Date.now() - results.timestamps.start;
+        res.json(results);
+    } catch (error) {
+        results.error = error.message;
+        results.timestamps.total = Date.now() - results.timestamps.start;
+        res.status(500).json(results);
+    }
+});
+
 // Common items by role for context
 const ROLE_ITEMS = {
   'Safe Lane': ['power_treads', 'battle_fury', 'black_king_bar', 'butterfly', 'satanic', 'monkey_king_bar', 'daedalus', 'manta', 'disperser'],
