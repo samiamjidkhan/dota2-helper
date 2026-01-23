@@ -3,11 +3,11 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors'); // Import cors
 const path = require('path'); // Import path module
-// Lazy load dotaconstants to avoid issues with Vercel serverless function size
+// Lazy load dotaconstants using dynamic import (ES Module compatible)
 let dotaconstantsData = null;
-function getDotaConstants() {
+async function getDotaConstants() {
   if (!dotaconstantsData) {
-    const dc = require('dotaconstants');
+    const dc = await import('dotaconstants');
     dotaconstantsData = {
       heroes: dc.heroes,
       abilities: dc.abilities,
@@ -66,14 +66,14 @@ const DOTA_HERO_NAMES = [
 const VALID_HERO_NAMES_SET = new Set(DOTA_HERO_NAMES);
 
 // Get current patch version
-function getCurrentPatch() {
-  const { patch } = getDotaConstants();
+async function getCurrentPatch() {
+  const { patch } = await getDotaConstants();
   return patch[patch.length - 1]?.name || 'Unknown';
 }
 
 // Get hero abilities with current stats from dotaconstants
-function getHeroAbilitiesContext(heroName) {
-  const { heroes, hero_abilities, abilities } = getDotaConstants();
+async function getHeroAbilitiesContext(heroName) {
+  const { heroes, hero_abilities, abilities } = await getDotaConstants();
   const hero = Object.values(heroes).find(h => h.localized_name === heroName);
   if (!hero) return '';
 
@@ -112,8 +112,8 @@ function getHeroAbilitiesContext(heroName) {
 }
 
 // Get item data for commonly built items
-function getItemContext(itemNames) {
-  const { items } = getDotaConstants();
+async function getItemContext(itemNames) {
+  const { items } = await getDotaConstants();
   return itemNames
     .map(name => {
       const item = items[name];
@@ -157,7 +157,7 @@ app.get('/api/debug', async (req, res) => {
 
         // Test 2: Load dotaconstants
         const dcStart = Date.now();
-        const dc = getDotaConstants();
+        const dc = await getDotaConstants();
         results.timestamps.dotaconstants = Date.now() - dcStart;
         results.step2_dotaconstants = dc.patch ? 'OK' : 'FAILED';
         results.patch = dc.patch[dc.patch.length - 1]?.name;
@@ -308,10 +308,10 @@ app.post('/api/get-tips', async (req, res) => {
     }
 
     // Get current patch and game data from dotaconstants
-    const currentPatch = getCurrentPatch();
-    const yourHeroAbilities = getHeroAbilitiesContext(yourHeroName);
+    const currentPatch = await getCurrentPatch();
+    const yourHeroAbilities = await getHeroAbilitiesContext(yourHeroName);
     const roleItems = ROLE_ITEMS[yourHeroRole] || ROLE_ITEMS['Support'];
-    const itemContext = getItemContext(roleItems);
+    const itemContext = await getItemContext(roleItems);
 
     // Format teams for the prompt
     const formatTeam = (team) => team.map(p => `${p.hero} (${p.role})`).join(', ');
