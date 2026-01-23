@@ -382,9 +382,6 @@ ${laneMatchupInfo}
 ### Overview
 2-3 sentences on your win condition and role in this matchup.
 
-### Skill Build
-Recommended ability order for levels 1-6 and which to max first. Explain why.
-
 ### Laning Phase (0-10 min)
 Starting items, how to trade with lane opponents, kill potential, and threats to avoid.
 
