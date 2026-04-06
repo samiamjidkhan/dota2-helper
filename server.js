@@ -5,7 +5,7 @@ const cors = require('cors'); // Import cors
 const path = require('path'); // Import path module
 const { Redis } = require('@upstash/redis');
 const Stripe = require('stripe');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID;
@@ -338,7 +338,7 @@ app.post('/api/webhook', async (req, res) => {
         const subscriptionId = session.subscription;
         const email = session.customer_details?.email || session.customer_email;
 
-        const token = uuidv4();
+        const token = crypto.randomUUID();
 
         await redis.set(`token:${token}`, {
           stripeCustomerId: customerId,
