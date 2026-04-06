@@ -556,8 +556,8 @@ heroForm.addEventListener('submit', async (event) => {
                 <div class="upgrade-prompt">
                     <h3>Daily Limit Reached</h3>
                     <p>You've used all 3 free queries for today.</p>
-                    <p>Upgrade to <strong>Pro</strong> for unlimited queries at $3/month.</p>
-                    <button onclick="startCheckout()" class="checkout-btn">Upgrade to Pro</button>
+                    <p>Get <strong>unlimited queries</strong> for just $3/month.</p>
+                    <button onclick="startCheckout()" class="checkout-btn">Upgrade to Pro — $3/mo</button>
                 </div>
             `;
             loadingSpinner.style.display = 'none';
