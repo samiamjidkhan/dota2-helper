@@ -266,22 +266,15 @@ async function rateLimitMiddleware(req, res, next) {
     }
   }
 
-  // IP-based rate limiting for free tier
+  // IP-based rate limiting for free tier (check only, don't increment yet)
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown')
     .split(',')[0].trim();
   const key = `ratelimit:${ip}`;
 
   try {
-    const current = await redis.incr(key);
-    if (current === 1) {
-      await redis.expire(key, 86400);
-    }
+    const current = (await redis.get(key)) || 0;
 
-    const remaining = Math.max(0, FREE_TIER_LIMIT - current);
-    res.setHeader('X-RateLimit-Limit', FREE_TIER_LIMIT);
-    res.setHeader('X-RateLimit-Remaining', remaining);
-
-    if (current > FREE_TIER_LIMIT) {
+    if (current >= FREE_TIER_LIMIT) {
       return res.status(429).json({
         error: 'Daily free limit reached. Upgrade to Pro for unlimited queries.',
         remaining: 0,
@@ -290,7 +283,8 @@ async function rateLimitMiddleware(req, res, next) {
     }
 
     req.isPro = false;
-    req.queriesRemaining = remaining;
+    req.rateLimitKey = key;
+    req.queriesRemaining = FREE_TIER_LIMIT - current - 1; // will be decremented after success
     next();
   } catch (err) {
     console.error('Redis rate limit error:', err);
@@ -661,6 +655,14 @@ Be specific to this matchup. No generic advice.`;
         const choices = groqResponse.data.choices;
         if (choices && choices.length > 0 && choices[0].message && choices[0].message.content) {
             const tips = choices[0].message.content;
+
+            // Increment rate limit only on successful response
+            if (redis && req.rateLimitKey) {
+              const count = await redis.incr(req.rateLimitKey);
+              if (count === 1) await redis.expire(req.rateLimitKey, 86400);
+              req.queriesRemaining = Math.max(0, FREE_TIER_LIMIT - count);
+            }
+
             res.json({ tips, remaining: req.queriesRemaining, isPro: req.isPro });
         } else {
             console.error('Unexpected response structure from Groq:', JSON.stringify(groqResponse.data, null, 2));
