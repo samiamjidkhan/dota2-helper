@@ -3,6 +3,20 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors'); // Import cors
 const path = require('path'); // Import path module
+const { Redis } = require('@upstash/redis');
+const Stripe = require('stripe');
+const { v4: uuidv4 } = require('uuid');
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID;
+const APP_URL = process.env.APP_URL || 'https://www.dota2helper.com';
+const FREE_TIER_LIMIT = 3;
+
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 // Lazy load dotaconstants using dynamic import (ES Module compatible)
 let dotaconstantsData = null;
 async function getDotaConstants() {
@@ -25,6 +39,7 @@ const port = process.env.PORT || 3002;
 
 // Middleware
 app.use(cors()); // Enable CORS for all routes
+app.use('/api/webhook', express.raw({ type: 'application/json' })); // Raw body for Stripe webhook verification
 app.use(express.json()); // Parse JSON request bodies
 
 // --- Serve Static Files --- 
@@ -229,7 +244,217 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(staticFilesPath, 'index.html')); 
 });
 
-// --- API Routes --- 
+// --- Rate Limiting Middleware ---
+async function rateLimitMiddleware(req, res, next) {
+  // Check for Pro token
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const tokenData = await redis.get(`token:${token}`);
+      if (tokenData && tokenData.status === 'active') {
+        req.isPro = true;
+        return next();
+      }
+    } catch (err) {
+      console.error('Redis error checking token:', err);
+    }
+  }
+
+  // IP-based rate limiting for free tier
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown')
+    .split(',')[0].trim();
+  const key = `ratelimit:${ip}`;
+
+  try {
+    const current = await redis.incr(key);
+    if (current === 1) {
+      await redis.expire(key, 86400);
+    }
+
+    const remaining = Math.max(0, FREE_TIER_LIMIT - current);
+    res.setHeader('X-RateLimit-Limit', FREE_TIER_LIMIT);
+    res.setHeader('X-RateLimit-Remaining', remaining);
+
+    if (current > FREE_TIER_LIMIT) {
+      return res.status(429).json({
+        error: 'Daily free limit reached. Upgrade to Pro for unlimited queries.',
+        remaining: 0,
+        limit: FREE_TIER_LIMIT
+      });
+    }
+
+    req.isPro = false;
+    req.queriesRemaining = remaining;
+    next();
+  } catch (err) {
+    console.error('Redis rate limit error:', err);
+    // Fail open — don't break the app if Redis is down
+    next();
+  }
+}
+
+// --- Stripe Endpoints ---
+
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: `${APP_URL}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${APP_URL}?cancelled=true`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Stripe checkout error:', err);
+    res.status(500).json({ error: 'Failed to create checkout session.' });
+  }
+});
+
+app.post('/api/webhook', async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+        const email = session.customer_details?.email || session.customer_email;
+
+        const token = uuidv4();
+
+        await redis.set(`token:${token}`, {
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId,
+          email: email,
+          status: 'active',
+          createdAt: new Date().toISOString()
+        });
+
+        await redis.set(`customer:${customerId}`, token);
+        if (email) {
+          await redis.set(`email:${email.toLowerCase()}`, customerId);
+        }
+
+        console.log(`New subscription: ${customerId}, token: ${token}`);
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
+        const token = await redis.get(`customer:${customerId}`);
+        if (token) {
+          const tokenData = await redis.get(`token:${token}`);
+          if (tokenData) {
+            const newStatus = subscription.status === 'active' ? 'active' : 'inactive';
+            await redis.set(`token:${token}`, { ...tokenData, status: newStatus });
+          }
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
+        const token = await redis.get(`customer:${customerId}`);
+        if (token) {
+          const tokenData = await redis.get(`token:${token}`);
+          if (tokenData) {
+            await redis.set(`token:${token}`, { ...tokenData, status: 'inactive' });
+          }
+        }
+        break;
+      }
+    }
+  } catch (err) {
+    console.error('Webhook handler error:', err);
+  }
+
+  res.json({ received: true });
+});
+
+app.get('/api/checkout-success', async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) {
+    return res.status(400).json({ error: 'Missing session_id' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const customerId = session.customer;
+    const token = await redis.get(`customer:${customerId}`);
+
+    if (!token) {
+      return res.status(202).json({ error: 'Processing payment. Please retry in a moment.' });
+    }
+
+    res.json({ token });
+  } catch (err) {
+    console.error('Checkout success error:', err);
+    res.status(500).json({ error: 'Failed to retrieve subscription.' });
+  }
+});
+
+app.get('/api/subscription-status', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.json({ active: false });
+  }
+  const token = authHeader.substring(7);
+
+  try {
+    const tokenData = await redis.get(`token:${token}`);
+    if (tokenData && tokenData.status === 'active') {
+      return res.json({ active: true, email: tokenData.email });
+    }
+    return res.json({ active: false });
+  } catch (err) {
+    console.error('Status check error:', err);
+    return res.json({ active: false });
+  }
+});
+
+app.post('/api/recover-token', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+
+  try {
+    const customerId = await redis.get(`email:${email.toLowerCase().trim()}`);
+    if (!customerId) {
+      return res.status(404).json({ error: 'No subscription found for this email.' });
+    }
+
+    const token = await redis.get(`customer:${customerId}`);
+    if (!token) {
+      return res.status(404).json({ error: 'Subscription token not found.' });
+    }
+
+    const tokenData = await redis.get(`token:${token}`);
+    if (!tokenData || tokenData.status !== 'active') {
+      return res.status(404).json({ error: 'Subscription is no longer active.' });
+    }
+
+    res.json({ token });
+  } catch (err) {
+    console.error('Token recovery error:', err);
+    res.status(500).json({ error: 'Failed to recover token.' });
+  }
+});
+
+// --- API Routes ---
 
 // API route to get hero list (now uses hardcoded list)
 app.get('/api/heroes', async (req, res) => {
@@ -247,8 +472,8 @@ app.get('/api/heroes', async (req, res) => {
     }
 });
 
-// API route to get tips from Gemini
-app.post('/api/get-tips', async (req, res) => {
+// API route to get tips from LLM
+app.post('/api/get-tips', rateLimitMiddleware, async (req, res) => {
     const { myTeam, opponentTeam } = req.body; 
 
     // --- Backend Validation ---
@@ -428,7 +653,7 @@ Be specific to this matchup. No generic advice.`;
         const choices = groqResponse.data.choices;
         if (choices && choices.length > 0 && choices[0].message && choices[0].message.content) {
             const tips = choices[0].message.content;
-            res.json({ tips });
+            res.json({ tips, remaining: req.queriesRemaining, isPro: req.isPro });
         } else {
             console.error('Unexpected response structure from Groq:', JSON.stringify(groqResponse.data, null, 2));
             res.status(500).json({ error: 'Failed to parse response from AI model.' });

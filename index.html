@@ -12,7 +12,14 @@
         <header class="app-header">
             <img src="images/dota2_logo.png" alt="Dota 2 Logo" class="header-logo">
             <h1>helper</h1>
+            <span id="proBadge" class="pro-badge" style="display: none;">PRO</span>
         </header>
+
+        <div id="subscriptionBar" class="subscription-bar">
+            <span id="queryCounter" class="query-counter">3 free queries remaining today</span>
+            <button id="upgradeBtn" class="upgrade-btn" onclick="startCheckout()">Upgrade to Pro — $3/mo</button>
+            <a id="recoverLink" href="#" class="recover-link" onclick="recoverToken(); return false;">Already subscribed?</a>
+        </div>
 
         <form id="heroForm">
             <!-- Shared Datalist for Hero Suggestions -->
