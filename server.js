@@ -7,16 +7,18 @@ const { Redis } = require('@upstash/redis');
 const Stripe = require('stripe');
 const { v4: uuidv4 } = require('uuid');
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID;
 const APP_URL = process.env.APP_URL || 'https://www.dota2helper.com';
 const FREE_TIER_LIMIT = 3;
 
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const redis = (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+  ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+  : null;
+
+if (!stripe) console.warn('STRIPE_SECRET_KEY not set — payment endpoints will not work');
+if (!redis) console.warn('Redis not configured — rate limiting will be disabled');
 // Lazy load dotaconstants using dynamic import (ES Module compatible)
 let dotaconstantsData = null;
 async function getDotaConstants() {
@@ -246,6 +248,9 @@ app.get('/', (req, res) => {
 
 // --- Rate Limiting Middleware ---
 async function rateLimitMiddleware(req, res, next) {
+  // If Redis is not configured, skip rate limiting
+  if (!redis) return next();
+
   // Check for Pro token
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -297,6 +302,7 @@ async function rateLimitMiddleware(req, res, next) {
 // --- Stripe Endpoints ---
 
 app.post('/api/create-checkout-session', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured.' });
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -313,6 +319,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
 });
 
 app.post('/api/webhook', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured.' });
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -385,6 +392,7 @@ app.post('/api/webhook', async (req, res) => {
 });
 
 app.get('/api/checkout-success', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured.' });
   const { session_id } = req.query;
   if (!session_id) {
     return res.status(400).json({ error: 'Missing session_id' });
