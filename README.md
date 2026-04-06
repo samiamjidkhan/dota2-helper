@@ -10,10 +10,10 @@ An AI-powered web application that provides gameplay tips, skill builds, and ite
 
 *   Select your hero, role, 4 allies, and 5 opponents from a filterable list with abbreviation support (e.g., "am" → "Anti-Mage").
 *   **Current patch data** - Hero abilities and item stats pulled from `dotaconstants` (updated with each Dota 2 patch).
-*   **Skill build recommendations** - Ability leveling order with reasoning.
 *   **Lane matchup analysis** - Enemy abilities context for your specific lane opponents.
 *   **Teammate synergies** - Combo suggestions with your allies.
 *   Structured advice covering laning, mid game, late game, and item progression.
+*   **Freemium model** - 3 free queries/day, unlimited with Pro ($3/month via Stripe).
 *   Responsive dark theme inspired by Dota 2 aesthetics.
 
 ## How it Works
@@ -54,6 +54,9 @@ An AI-powered web application that provides gameplay tips, skill builds, and ite
 *   **Backend:** Node.js + Express (serverless on Vercel)
 *   **AI:** Groq API (GPT-OSS 120B)
 *   **Game Data:** [dotaconstants](https://github.com/odota/dotaconstants) - parsed Dota 2 game files
+*   **Payments:** Stripe (subscriptions + webhooks)
+*   **Rate Limiting:** Upstash Redis
+*   **Analytics:** Vercel Web Analytics
 
 ## Deployment
 
@@ -65,4 +68,4 @@ Suggestions and feedback are welcome! Please reach out via [X (formerly Twitter)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details. 
