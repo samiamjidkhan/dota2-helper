@@ -282,15 +282,11 @@ async function handleCheckoutReturn() {
 
 function updateProUI(isPro) {
   const badge = document.getElementById('proBadge');
-  const counter = document.getElementById('queryCounter');
-  const upgradeBtn = document.getElementById('upgradeBtn');
-  const recoverLink = document.getElementById('recoverLink');
+  const subscriptionBar = document.getElementById('subscriptionBar');
 
   if (isPro) {
     badge.style.display = 'inline-block';
-    counter.style.display = 'none';
-    upgradeBtn.style.display = 'none';
-    recoverLink.style.display = 'none';
+    subscriptionBar.style.display = 'none';
   } else {
     badge.style.display = 'none';
     counter.style.display = 'block';
