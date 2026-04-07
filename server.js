@@ -312,6 +312,33 @@ app.post('/api/create-checkout-session', async (req, res) => {
   }
 });
 
+app.post('/api/create-portal-session', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured.' });
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Not authenticated.' });
+  }
+  const token = authHeader.substring(7);
+
+  try {
+    const tokenData = await redis.get(`token:${token}`);
+    if (!tokenData || !tokenData.stripeCustomerId) {
+      return res.status(404).json({ error: 'Subscription not found.' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: tokenData.stripeCustomerId,
+      return_url: APP_URL,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Portal session error:', err);
+    res.status(500).json({ error: 'Failed to create portal session.' });
+  }
+});
+
 app.post('/api/webhook', async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Payments not configured.' });
   const sig = req.headers['stripe-signature'];

@@ -283,12 +283,15 @@ async function handleCheckoutReturn() {
 function updateProUI(isPro) {
   const badge = document.getElementById('proBadge');
   const subscriptionBar = document.getElementById('subscriptionBar');
+  const manageLink = document.getElementById('manageSubLink');
 
   if (isPro) {
     badge.style.display = 'inline-block';
+    manageLink.style.display = 'inline';
     subscriptionBar.style.display = 'none';
   } else {
     badge.style.display = 'none';
+    manageLink.style.display = 'none';
     counter.style.display = 'block';
     upgradeBtn.style.display = 'inline-block';
     recoverLink.style.display = 'inline';
@@ -309,6 +312,27 @@ async function startCheckout() {
     }
   } catch (err) {
     console.error('Checkout error:', err);
+  }
+}
+
+async function openBillingPortal() {
+  const token = getProToken();
+  if (!token) return;
+
+  try {
+    const res = await fetch('/api/create-portal-session', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || 'Failed to open billing portal.');
+    }
+  } catch (err) {
+    console.error('Portal error:', err);
+    alert('Failed to open billing portal.');
   }
 }
 
