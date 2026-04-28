@@ -284,22 +284,14 @@ function updateProUI(isPro) {
   const badge = document.getElementById('proBadge');
   const subscriptionBar = document.getElementById('subscriptionBar');
   const manageLink = document.getElementById('manageSubLink');
-  const matchLockedOverlay = document.getElementById('matchAnalysisLockedOverlay');
-  const matchForm = document.querySelector('.match-form');
-  const matchOutput = document.getElementById('matchOutput');
 
   if (isPro) {
     badge.style.display = 'inline-block';
     manageLink.style.display = 'inline';
     subscriptionBar.style.display = 'none';
-    if (matchLockedOverlay) matchLockedOverlay.style.display = 'none';
-    if (matchForm) matchForm.style.display = '';
   } else {
     badge.style.display = 'none';
     manageLink.style.display = 'none';
-    if (matchLockedOverlay) matchLockedOverlay.style.display = 'block';
-    if (matchForm) matchForm.style.display = 'none';
-    if (matchOutput) matchOutput.style.display = 'none';
     counter.style.display = 'block';
     upgradeBtn.style.display = 'inline-block';
     recoverLink.style.display = 'inline';
@@ -344,66 +336,6 @@ async function openBillingPortal() {
   }
 }
 
-async function analyzeMatch() {
-  const matchId = document.getElementById('matchIdInput').value.trim();
-  const hero = document.getElementById('matchHeroInput').value.trim();
-  const errorEl = document.getElementById('matchError');
-  const spinnerEl = document.getElementById('matchLoadingSpinner');
-  const outputEl = document.getElementById('matchOutput');
-  const btn = document.getElementById('analyzeMatchBtn');
-
-  errorEl.textContent = '';
-  outputEl.style.display = 'none';
-
-  if (!matchId || !/^\d+$/.test(matchId)) {
-    errorEl.textContent = 'Please enter a valid match ID (numbers only).';
-    return;
-  }
-  if (!hero || !validHeroNames.has(hero)) {
-    errorEl.textContent = 'Please enter a valid hero name.';
-    return;
-  }
-
-  const token = getProToken();
-  if (!token) {
-    errorEl.textContent = 'Pro subscription required.';
-    return;
-  }
-
-  spinnerEl.style.display = 'flex';
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/analyze-match', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ match_id: matchId, hero })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      errorEl.textContent = data.error || `Failed (HTTP ${res.status})`;
-      return;
-    }
-
-    const headerHtml = `<div class="match-result-header ${data.match.won ? 'won' : 'lost'}">
-      ${data.match.won ? 'VICTORY' : 'DEFEAT'} · ${data.match.duration} min · ${data.match.hero} (${data.match.lane})
-    </div>`;
-    outputEl.innerHTML = headerHtml + formatStructuredOutput(data.analysis);
-    outputEl.style.display = 'block';
-  } catch (err) {
-    console.error('Match analysis error:', err);
-    errorEl.textContent = 'Failed to analyze match. Please try again.';
-  } finally {
-    spinnerEl.style.display = 'none';
-    btn.disabled = false;
-  }
-}
-
 async function recoverToken() {
   const email = prompt('Enter the email you used for your Pro subscription:');
   if (!email) return;
@@ -435,15 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAllyRoles(); // Set initial ally roles
     checkProStatus();
     handleCheckoutReturn();
-
-    const analyzeBtn = document.getElementById('analyzeMatchBtn');
-    if (analyzeBtn) analyzeBtn.addEventListener('click', analyzeMatch);
-
-    // Auto-correct hero input in match form
-    const matchHeroInput = document.getElementById('matchHeroInput');
-    if (matchHeroInput) {
-        matchHeroInput.addEventListener('blur', () => autoCorrectInputs(matchHeroInput));
-    }
 });
 
 // Add event listener for when the user changes their role selection
