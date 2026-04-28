@@ -110,6 +110,40 @@
             </div>
         </div>
 
+        <div id="matchAnalysisSection" class="match-analysis-section">
+            <h2>Post-Game Analysis <span class="pro-tag">PRO</span></h2>
+            <p class="match-analysis-desc">Just lost a tough game? Paste the match ID and we'll review what went wrong.</p>
+
+            <div class="match-form">
+                <div class="form-group">
+                    <label for="matchIdInput">Match ID</label>
+                    <input type="text" id="matchIdInput" placeholder="e.g., 8123456789" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="matchHeroInput">Your Hero</label>
+                    <input type="text" id="matchHeroInput" list="heroList" placeholder="Hero you played" autocomplete="off">
+                </div>
+                <button type="button" id="analyzeMatchBtn" class="analyze-btn">Analyze Match</button>
+            </div>
+
+            <p id="matchError" class="error"></p>
+
+            <div id="matchLoadingSpinner" class="spinner-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing your match...</p>
+            </div>
+
+            <div id="matchOutput" class="output-content" style="display: none;"></div>
+
+            <div id="matchAnalysisLockedOverlay" class="locked-overlay" style="display: none;">
+                <div class="locked-content">
+                    <h3>🔒 Pro Feature</h3>
+                    <p>Get AI-powered post-game analysis to understand exactly what went wrong.</p>
+                    <button onclick="startCheckout()" class="checkout-btn">Unlock with Pro — $3/mo</button>
+                </div>
+            </div>
+        </div>
+
         <footer>
             <p>
                 Suggestions or feedback? Reach out on <a href="https://x.com/ibnAmjid" target="_blank" rel="noopener noreferrer">X (formerly Twitter)</a>.
