@@ -247,51 +247,56 @@ app.get('/', (req, res) => {
 });
 
 // --- Rate Limiting Middleware ---
-async function rateLimitMiddleware(req, res, next) {
-  // If Redis is not configured, skip rate limiting
-  if (!redis) return next();
+function makeRateLimitMiddleware(keyPrefix) {
+  return async function rateLimitMiddleware(req, res, next) {
+    // If Redis is not configured, skip rate limiting
+    if (!redis) return next();
 
-  // Check for Pro token
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    try {
-      const tokenData = await redis.get(`token:${token}`);
-      if (tokenData && tokenData.status === 'active') {
-        req.isPro = true;
-        return next();
+    // Check for Pro token
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        const tokenData = await redis.get(`token:${token}`);
+        if (tokenData && tokenData.status === 'active') {
+          req.isPro = true;
+          return next();
+        }
+      } catch (err) {
+        console.error('Redis error checking token:', err);
       }
+    }
+
+    // IP-based rate limiting for free tier (check only, don't increment yet)
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown')
+      .split(',')[0].trim();
+    const key = `${keyPrefix}:${ip}`;
+
+    try {
+      const current = (await redis.get(key)) || 0;
+
+      if (current >= FREE_TIER_LIMIT) {
+        return res.status(429).json({
+          error: 'Daily free limit reached. Upgrade to Pro for unlimited queries.',
+          remaining: 0,
+          limit: FREE_TIER_LIMIT
+        });
+      }
+
+      req.isPro = false;
+      req.rateLimitKey = key;
+      req.queriesRemaining = FREE_TIER_LIMIT - current - 1; // decremented after success
+      next();
     } catch (err) {
-      console.error('Redis error checking token:', err);
+      console.error('Redis rate limit error:', err);
+      // Fail open — don't break the app if Redis is down
+      next();
     }
-  }
-
-  // IP-based rate limiting for free tier (check only, don't increment yet)
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown')
-    .split(',')[0].trim();
-  const key = `ratelimit:${ip}`;
-
-  try {
-    const current = (await redis.get(key)) || 0;
-
-    if (current >= FREE_TIER_LIMIT) {
-      return res.status(429).json({
-        error: 'Daily free limit reached. Upgrade to Pro for unlimited queries.',
-        remaining: 0,
-        limit: FREE_TIER_LIMIT
-      });
-    }
-
-    req.isPro = false;
-    req.rateLimitKey = key;
-    req.queriesRemaining = FREE_TIER_LIMIT - current - 1; // will be decremented after success
-    next();
-  } catch (err) {
-    console.error('Redis rate limit error:', err);
-    // Fail open — don't break the app if Redis is down
-    next();
-  }
+  };
 }
+
+// Default rate limiter for /api/get-tips (preserves existing key prefix)
+const rateLimitMiddleware = makeRateLimitMiddleware('ratelimit');
 
 // --- Stripe Endpoints ---
 
@@ -502,25 +507,7 @@ async function formatPlayerItems(player) {
 
 const LANE_NAMES = { 1: 'Safe Lane', 2: 'Mid Lane', 3: 'Off Lane', 4: 'Jungle' };
 
-app.post('/api/analyze-match', async (req, res) => {
-  // Pro-only: require active token
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Pro subscription required for match analysis.' });
-  }
-  const token = authHeader.substring(7);
-
-  if (!redis) return res.status(503).json({ error: 'Service unavailable.' });
-
-  try {
-    const tokenData = await redis.get(`token:${token}`);
-    if (!tokenData || tokenData.status !== 'active') {
-      return res.status(403).json({ error: 'Pro subscription required for match analysis.' });
-    }
-  } catch (err) {
-    console.error('Token check error:', err);
-    return res.status(500).json({ error: 'Authentication error.' });
-  }
+app.post('/api/analyze-match', makeRateLimitMiddleware('ratelimit:match'), async (req, res) => {
 
   const { match_id, hero } = req.body;
 
@@ -642,9 +629,18 @@ Be direct and helpful. No fluff.`;
 
     const choices = groqResponse.data.choices;
     if (choices && choices[0]?.message?.content) {
+      // Increment rate limit only on successful response
+      if (redis && req.rateLimitKey) {
+        const count = await redis.incr(req.rateLimitKey);
+        if (count === 1) await redis.expire(req.rateLimitKey, 86400);
+        req.queriesRemaining = Math.max(0, FREE_TIER_LIMIT - count);
+      }
+
       return res.json({
         analysis: choices[0].message.content,
-        match: { won, duration: durationMin, hero, lane, isRadiant }
+        match: { won, duration: durationMin, hero, lane, isRadiant },
+        remaining: req.queriesRemaining,
+        isPro: req.isPro
       });
     }
 

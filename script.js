@@ -284,22 +284,14 @@ function updateProUI(isPro) {
   const badge = document.getElementById('proBadge');
   const subscriptionBar = document.getElementById('subscriptionBar');
   const manageLink = document.getElementById('manageSubLink');
-  const matchLockedOverlay = document.getElementById('matchAnalysisLockedOverlay');
-  const matchForm = document.querySelector('.match-form');
-  const matchOutput = document.getElementById('matchOutput');
 
   if (isPro) {
     badge.style.display = 'inline-block';
     manageLink.style.display = 'inline';
     subscriptionBar.style.display = 'none';
-    if (matchLockedOverlay) matchLockedOverlay.style.display = 'none';
-    if (matchForm) matchForm.style.display = '';
   } else {
     badge.style.display = 'none';
     manageLink.style.display = 'none';
-    if (matchLockedOverlay) matchLockedOverlay.style.display = 'block';
-    if (matchForm) matchForm.style.display = 'none';
-    if (matchOutput) matchOutput.style.display = 'none';
     counter.style.display = 'block';
     upgradeBtn.style.display = 'inline-block';
     recoverLink.style.display = 'inline';
@@ -364,26 +356,34 @@ async function analyzeMatch() {
     return;
   }
 
-  const token = getProToken();
-  if (!token) {
-    errorEl.textContent = 'Pro subscription required.';
-    return;
-  }
-
   spinnerEl.style.display = 'flex';
   btn.disabled = true;
 
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getProToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch('/api/analyze-match', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers,
       body: JSON.stringify({ match_id: matchId, hero })
     });
 
     const data = await res.json();
+
+    if (res.status === 429) {
+      outputEl.innerHTML = `
+        <div class="upgrade-prompt">
+          <h3>Daily Limit Reached</h3>
+          <p>You've used all 3 free match analyses for today.</p>
+          <p>Get <strong>unlimited analyses</strong> for just $3/month.</p>
+          <button onclick="startCheckout()" class="checkout-btn">Upgrade to Pro — $3/mo</button>
+        </div>
+      `;
+      outputEl.style.display = 'block';
+      return;
+    }
 
     if (!res.ok) {
       errorEl.textContent = data.error || `Failed (HTTP ${res.status})`;
