@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID;
 const APP_URL = process.env.APP_URL || 'https://www.dota2helper.com';
-const FREE_TIER_LIMIT = 3;
+const FREE_TIER_LIMIT = 2;
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const redis = (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)

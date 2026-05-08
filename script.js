@@ -376,7 +376,7 @@ async function analyzeMatch() {
       outputEl.innerHTML = `
         <div class="upgrade-prompt">
           <h3>Daily Limit Reached</h3>
-          <p>You've used all 3 free match analyses for today.</p>
+          <p>You've used all 2 free match analyses for today.</p>
           <p>Get <strong>unlimited analyses</strong> for just $3/month.</p>
           <button onclick="startCheckout()" class="checkout-btn">Upgrade to Pro — $3/mo</button>
         </div>
@@ -656,7 +656,7 @@ heroForm.addEventListener('submit', async (event) => {
             outputDiv.innerHTML = `
                 <div class="upgrade-prompt">
                     <h3>Daily Limit Reached</h3>
-                    <p>You've used all 3 free queries for today.</p>
+                    <p>You've used all 2 free queries for today.</p>
                     <p>Get <strong>unlimited queries</strong> for just $3/month.</p>
                     <button onclick="startCheckout()" class="checkout-btn">Upgrade to Pro — $3/mo</button>
                 </div>
