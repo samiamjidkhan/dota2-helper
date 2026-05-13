@@ -567,21 +567,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Otherwise: the topmost section whose top has crossed ~30% of viewport
-            const threshold = scrollY + viewportH * 0.3;
+            // The last section whose top has crossed a fixed offset from viewport top.
+            // Fixed 120px (vs viewport-relative) avoids over-shooting into the next
+            // section on tall viewports when the current section is short.
+            const threshold = scrollY + 120;
             let active = sections[0];
             for (const section of sections) {
                 if (section.offsetTop <= threshold) active = section;
+                else break; // sections are in DOM order
             }
             setActive(active.id);
         };
 
-        // Click: set active immediately (don't wait for scroll)
+        // Click: set active immediately and suppress scroll-driven updates
+        // during the smooth-scroll animation so the click choice isn't overwritten.
+        let suppressUntil = 0;
         navLinks.forEach(a => {
-            a.addEventListener('click', () => setActive(a.dataset.section));
+            a.addEventListener('click', () => {
+                setActive(a.dataset.section);
+                suppressUntil = Date.now() + 800; // smooth scroll ~600ms
+            });
         });
 
-        window.addEventListener('scroll', updateActive, { passive: true });
+        window.addEventListener('scroll', () => {
+            if (Date.now() < suppressUntil) return;
+            updateActive();
+        }, { passive: true });
         window.addEventListener('resize', updateActive);
         updateActive();
     }
