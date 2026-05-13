@@ -488,6 +488,86 @@ app.post('/api/recover-token', async (req, res) => {
   }
 });
 
+// --- Draft Mode (live counter-pick suggestions) ---
+app.post('/api/draft-suggest', makeRateLimitMiddleware('ratelimit:draft'), async (req, res) => {
+  const { myTeam, enemyTeam, myRole } = req.body;
+
+  const allies = (myTeam || []).filter(h => h && VALID_HERO_NAMES_SET.has(h.trim())).map(h => h.trim());
+  const enemies = (enemyTeam || []).filter(h => h && VALID_HERO_NAMES_SET.has(h.trim())).map(h => h.trim());
+
+  const validRoles = ['Safe Lane', 'Midlane', 'Offlane', 'Support', 'Hard Support'];
+  if (!myRole || !validRoles.includes(myRole)) {
+    return res.status(400).json({ error: 'Please select a valid role.' });
+  }
+
+  if (allies.length === 0 && enemies.length === 0) {
+    return res.status(400).json({ error: 'Provide at least one picked hero from either team.' });
+  }
+
+  // Quick ability summaries for context
+  const enemyContext = enemies.length ? await getEnemyAbilitiesBrief(enemies) : '(none picked yet)';
+
+  const currentPatch = await getCurrentPatch();
+
+  const prompt = `You are a Dota 2 drafting coach. The user is in champion select and needs FAST, CONCRETE pick recommendations. Be direct — no fluff. (Patch ${currentPatch})
+
+**Draft so far:**
+- Allies picked: ${allies.length ? allies.join(', ') : '(none yet)'}
+- Enemies picked: ${enemies.length ? enemies.join(', ') : '(none yet)'}
+
+**User is picking:** ${myRole}
+
+${enemies.length ? `**Enemy hero key abilities:**\n${enemyContext}` : ''}
+
+**Respond with these sections (be concise — user has ~30 seconds to read):**
+
+### Top 3 Picks for ${myRole}
+List 3 strong heroes for this role. For each, give 1-2 sentences on WHY (counter to enemy, synergy with allies, or general meta strength).
+
+### Heroes to Avoid
+List 2-3 heroes that would be HARD COUNTERED by what the enemy has picked. One sentence each.
+
+### Quick Strategy
+1-2 sentences on the overall game plan for this draft.
+
+Keep it tight. Players are reading this on a timer.`;
+
+  try {
+    const groqResponse = await axios.post(GROQ_API_URL, {
+      model: 'openai/gpt-oss-120b',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_completion_tokens: 2048,
+      reasoning_effort: 'low'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      }
+    });
+
+    const choices = groqResponse.data.choices;
+    if (choices && choices[0]?.message?.content) {
+      // Increment rate limit only on successful response
+      if (redis && req.rateLimitKey) {
+        const count = await redis.incr(req.rateLimitKey);
+        if (count === 1) await redis.expire(req.rateLimitKey, 86400);
+        req.queriesRemaining = Math.max(0, FREE_TIER_LIMIT - count);
+      }
+
+      return res.json({
+        suggestions: choices[0].message.content,
+        remaining: req.queriesRemaining,
+        isPro: req.isPro
+      });
+    }
+    return res.status(500).json({ error: 'Failed to generate suggestions.' });
+  } catch (err) {
+    console.error('Draft suggest error:', err.response?.data || err.message);
+    return res.status(500).json({ error: 'Failed to get draft suggestions. Try again.' });
+  }
+});
+
 // --- Match Analysis (Pro-only) ---
 
 // Map item IDs to readable names from dotaconstants

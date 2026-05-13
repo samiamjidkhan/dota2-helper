@@ -110,6 +110,50 @@
             </div>
         </div>
 
+        <div id="draftModeSection" class="match-analysis-section">
+            <h2>Draft Mode</h2>
+            <p class="match-analysis-desc">In champ select? Get instant counter-pick recommendations.</p>
+
+            <div class="draft-teams">
+                <div class="draft-team">
+                    <h4>Your Team (picked so far)</h4>
+                    <div class="draft-inputs">
+                        <input type="text" class="draft-ally" list="heroList" placeholder="Ally 1" autocomplete="off">
+                        <input type="text" class="draft-ally" list="heroList" placeholder="Ally 2" autocomplete="off">
+                        <input type="text" class="draft-ally" list="heroList" placeholder="Ally 3" autocomplete="off">
+                        <input type="text" class="draft-ally" list="heroList" placeholder="Ally 4" autocomplete="off">
+                    </div>
+                </div>
+                <div class="draft-team">
+                    <h4>Enemy Team (picked so far)</h4>
+                    <div class="draft-inputs">
+                        <input type="text" class="draft-enemy" list="heroList" placeholder="Enemy 1" autocomplete="off">
+                        <input type="text" class="draft-enemy" list="heroList" placeholder="Enemy 2" autocomplete="off">
+                        <input type="text" class="draft-enemy" list="heroList" placeholder="Enemy 3" autocomplete="off">
+                        <input type="text" class="draft-enemy" list="heroList" placeholder="Enemy 4" autocomplete="off">
+                        <input type="text" class="draft-enemy" list="heroList" placeholder="Enemy 5" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <div class="draft-controls">
+                <div class="form-group draft-role-group">
+                    <label for="draftRoleSelect">I'm picking for</label>
+                    <select id="draftRoleSelect" class="role-selector"></select>
+                </div>
+                <button type="button" id="suggestDraftBtn" class="analyze-btn">Suggest Picks</button>
+            </div>
+
+            <p id="draftError" class="error"></p>
+
+            <div id="draftLoadingSpinner" class="spinner-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing the draft...</p>
+            </div>
+
+            <div id="draftOutput" class="output-content" style="display: none;"></div>
+        </div>
+
         <div id="matchAnalysisSection" class="match-analysis-section">
             <h2>Post-Game Analysis</h2>
             <p class="match-analysis-desc">Just lost a tough game? Paste the match ID and we'll review what went wrong.</p>

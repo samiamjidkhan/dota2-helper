@@ -644,6 +644,80 @@ input.invalid {
     transform: translateY(-1px);
 }
 
+/* --- Draft Mode --- */
+
+.draft-teams {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.draft-team {
+    flex: 1;
+    min-width: 280px;
+    background-color: rgba(35, 35, 35, 0.7);
+    padding: 15px;
+    border-radius: 3px;
+    border: 1px solid #444;
+}
+
+.draft-team h4 {
+    text-align: center;
+    color: #c5c5c5;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
+
+.draft-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.draft-inputs input[type="text"] {
+    padding: 8px;
+    border: 1px solid #444;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    background-color: #111;
+    color: #ddd;
+    text-align: center;
+    width: 100%;
+}
+
+.draft-inputs input[type="text"]:focus {
+    outline: none;
+    border-color: #d4a017;
+    box-shadow: 0 0 6px rgba(212, 160, 23, 0.4);
+}
+
+.draft-controls {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.draft-role-group {
+    flex: 0 1 220px;
+    margin-bottom: 0;
+}
+
+.draft-role-group label {
+    text-align: center;
+}
+
+.draft-role-group .role-selector {
+    width: 100%;
+    flex-basis: auto;
+}
+
 /* --- Match Analysis (Pro) --- */
 
 .match-analysis-section {

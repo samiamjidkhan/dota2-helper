@@ -336,6 +336,83 @@ async function openBillingPortal() {
   }
 }
 
+async function suggestDraft() {
+  const allyInputs = Array.from(document.querySelectorAll('.draft-ally'));
+  const enemyInputs = Array.from(document.querySelectorAll('.draft-enemy'));
+  const myRole = document.getElementById('draftRoleSelect').value;
+  const errorEl = document.getElementById('draftError');
+  const spinnerEl = document.getElementById('draftLoadingSpinner');
+  const outputEl = document.getElementById('draftOutput');
+  const btn = document.getElementById('suggestDraftBtn');
+
+  errorEl.textContent = '';
+  outputEl.style.display = 'none';
+
+  // Auto-correct each input
+  [...allyInputs, ...enemyInputs].forEach(input => {
+    if (input.value.trim()) autoCorrectInputs(input);
+  });
+
+  const myTeam = allyInputs.map(i => i.value.trim()).filter(Boolean);
+  const enemyTeam = enemyInputs.map(i => i.value.trim()).filter(Boolean);
+
+  // Validate
+  for (const h of [...myTeam, ...enemyTeam]) {
+    if (!validHeroNames.has(h)) {
+      errorEl.textContent = `"${h}" is not a valid hero name.`;
+      return;
+    }
+  }
+  if (myTeam.length === 0 && enemyTeam.length === 0) {
+    errorEl.textContent = 'Enter at least one picked hero from either team.';
+    return;
+  }
+
+  spinnerEl.style.display = 'flex';
+  btn.disabled = true;
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getProToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/draft-suggest', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ myTeam, enemyTeam, myRole })
+    });
+
+    const data = await res.json();
+
+    if (res.status === 429) {
+      outputEl.innerHTML = `
+        <div class="upgrade-prompt">
+          <h3>Daily Limit Reached</h3>
+          <p>You've used all 2 free draft suggestions for today.</p>
+          <p>Get <strong>unlimited draft help</strong> for just $3/month.</p>
+          <button onclick="startCheckout()" class="checkout-btn">Upgrade to Pro — $3/mo</button>
+        </div>
+      `;
+      outputEl.style.display = 'block';
+      return;
+    }
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || `Failed (HTTP ${res.status})`;
+      return;
+    }
+
+    outputEl.innerHTML = formatStructuredOutput(data.suggestions);
+    outputEl.style.display = 'block';
+  } catch (err) {
+    console.error('Draft suggest error:', err);
+    errorEl.textContent = 'Failed to get draft suggestions. Please try again.';
+  } finally {
+    spinnerEl.style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
 async function analyzeMatch() {
   const matchId = document.getElementById('matchIdInput').value.trim();
   const hero = document.getElementById('matchHeroInput').value.trim();
@@ -444,6 +521,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (matchHeroInput) {
         matchHeroInput.addEventListener('blur', () => autoCorrectInputs(matchHeroInput));
     }
+
+    // Draft mode
+    const draftRoleSelect = document.getElementById('draftRoleSelect');
+    if (draftRoleSelect) {
+        ROLES.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role;
+            option.textContent = role;
+            draftRoleSelect.appendChild(option);
+        });
+    }
+
+    const suggestBtn = document.getElementById('suggestDraftBtn');
+    if (suggestBtn) suggestBtn.addEventListener('click', suggestDraft);
+
+    // Auto-correct hero inputs in draft form
+    document.querySelectorAll('.draft-ally, .draft-enemy').forEach(input => {
+        input.addEventListener('blur', () => {
+            if (input.value.trim()) autoCorrectInputs(input);
+        });
+    });
 });
 
 // Add event listener for when the user changes their role selection
