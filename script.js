@@ -542,6 +542,49 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input.value.trim()) autoCorrectInputs(input);
         });
     });
+
+    // Feature nav: highlight section currently in view
+    const navLinks = document.querySelectorAll('.feature-nav a[data-section]');
+    if (navLinks.length) {
+        const sections = Array.from(navLinks)
+            .map(a => document.getElementById(a.dataset.section))
+            .filter(Boolean);
+
+        const setActive = (id) => {
+            navLinks.forEach(a => {
+                a.classList.toggle('active', a.dataset.section === id);
+            });
+        };
+
+        const updateActive = () => {
+            const scrollY = window.scrollY;
+            const viewportH = window.innerHeight;
+            const docH = document.documentElement.scrollHeight;
+
+            // Bottom of page → always the last section
+            if (scrollY + viewportH >= docH - 4) {
+                setActive(sections[sections.length - 1].id);
+                return;
+            }
+
+            // Otherwise: the topmost section whose top has crossed ~30% of viewport
+            const threshold = scrollY + viewportH * 0.3;
+            let active = sections[0];
+            for (const section of sections) {
+                if (section.offsetTop <= threshold) active = section;
+            }
+            setActive(active.id);
+        };
+
+        // Click: set active immediately (don't wait for scroll)
+        navLinks.forEach(a => {
+            a.addEventListener('click', () => setActive(a.dataset.section));
+        });
+
+        window.addEventListener('scroll', updateActive, { passive: true });
+        window.addEventListener('resize', updateActive);
+        updateActive();
+    }
 });
 
 // Add event listener for when the user changes their role selection
