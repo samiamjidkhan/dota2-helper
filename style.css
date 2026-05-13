@@ -594,6 +594,41 @@ input.invalid {
     100% { background-position: -200% 0; }
 }
 
+.loading-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 28px;
+    background: linear-gradient(180deg, rgba(30, 22, 22, 0.6), rgba(20, 14, 14, 0.6));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.skeleton-h3 {
+    height: 22px;
+    width: 36%;
+    margin-top: 14px;
+    margin-bottom: 4px;
+    background: linear-gradient(90deg,
+        rgba(196, 52, 26, 0.12) 25%,
+        rgba(196, 52, 26, 0.22) 50%,
+        rgba(196, 52, 26, 0.12) 75%);
+    background-size: 200% 100%;
+}
+
+.skeleton-h3:first-child { margin-top: 0; }
+
+.skeleton-p {
+    height: 12px;
+}
+
+.skeleton-banner {
+    height: 46px;
+    width: 100%;
+    margin-bottom: 14px;
+    border-radius: var(--radius-md);
+}
+
 /* --- Error Box --- */
 .error-box {
     background: rgba(196, 52, 26, 0.10);

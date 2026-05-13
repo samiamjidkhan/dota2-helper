@@ -105,10 +105,19 @@
 
         <div id="results">
             <h2>Tips & Build</h2>
-            <!-- Loading Spinner -->
-            <div id="loadingSpinner" class="spinner-container" style="display: none;">
-                <div class="spinner"></div>
-                <p>Generating advice...</p>
+            <!-- Skeleton Loader -->
+            <div id="loadingSpinner" class="loading-skeleton" style="display: none;" aria-busy="true" aria-label="Generating advice">
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 96%"></div>
+                <div class="skeleton skeleton-p" style="width: 88%"></div>
+                <div class="skeleton skeleton-p" style="width: 72%"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 94%"></div>
+                <div class="skeleton skeleton-p" style="width: 82%"></div>
+                <div class="skeleton skeleton-p" style="width: 90%"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 85%"></div>
+                <div class="skeleton skeleton-p" style="width: 78%"></div>
             </div>
             <!-- Output Area -->
             <div id="output" class="output-content">
@@ -152,9 +161,16 @@
 
             <p id="draftError" class="error"></p>
 
-            <div id="draftLoadingSpinner" class="spinner-container" style="display: none;">
-                <div class="spinner"></div>
-                <p>Analyzing the draft...</p>
+            <div id="draftLoadingSpinner" class="loading-skeleton" style="display: none;" aria-busy="true" aria-label="Analyzing draft">
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 92%"></div>
+                <div class="skeleton skeleton-p" style="width: 84%"></div>
+                <div class="skeleton skeleton-p" style="width: 78%"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 88%"></div>
+                <div class="skeleton skeleton-p" style="width: 72%"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 80%"></div>
             </div>
 
             <div id="draftOutput" class="output-content" style="display: none;"></div>
@@ -178,9 +194,19 @@
 
             <p id="matchError" class="error"></p>
 
-            <div id="matchLoadingSpinner" class="spinner-container" style="display: none;">
-                <div class="spinner"></div>
-                <p>Analyzing your match...</p>
+            <div id="matchLoadingSpinner" class="loading-skeleton" style="display: none;" aria-busy="true" aria-label="Analyzing match">
+                <div class="skeleton skeleton-banner"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 92%"></div>
+                <div class="skeleton skeleton-p" style="width: 80%"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 94%"></div>
+                <div class="skeleton skeleton-p" style="width: 88%"></div>
+                <div class="skeleton skeleton-p" style="width: 72%"></div>
+                <div class="skeleton skeleton-h3"></div>
+                <div class="skeleton skeleton-p" style="width: 90%"></div>
+                <div class="skeleton skeleton-p" style="width: 84%"></div>
+                <div class="skeleton skeleton-p" style="width: 76%"></div>
             </div>
 
             <div id="matchOutput" class="output-content" style="display: none;"></div>
