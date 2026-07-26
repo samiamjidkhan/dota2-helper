@@ -19,7 +19,7 @@
         "use": "@vercel/static"
       },
        {
-        "src": "*.js",
+        "src": "script.js",
         "use": "@vercel/static"
       }
     ],
@@ -28,21 +28,37 @@
         "src": "/api/(.*)",
         "dest": "/server.js"
       },
-      { 
-        "src": "/images/(.*)", 
-        "dest": "/images/$1" 
+      {
+        "src": "/heroes(/.*)?",
+        "dest": "/server.js"
       },
-      { 
-        "src": "/(.*\\.css)", 
-        "dest": "/$1" 
+      {
+        "src": "/counters(/.*)?",
+        "dest": "/server.js"
       },
-      { 
-        "src": "/(.*\\.js)", 
-        "dest": "/$1" 
+      {
+        "src": "/sitemap.xml",
+        "dest": "/server.js"
       },
-       {
-        "src": "/(.*\\.png)", 
-        "dest": "/$1" 
+      {
+        "src": "/robots.txt",
+        "dest": "/server.js"
+      },
+      {
+        "src": "/images/(.*)",
+        "dest": "/images/$1"
+      },
+      {
+        "src": "/(.*\\.css)",
+        "dest": "/$1"
+      },
+      {
+        "src": "/script.js",
+        "dest": "/script.js"
+      },
+      {
+        "src": "/(.*\\.png)",
+        "dest": "/$1"
       },
       {
         "src": "/(.*\\.ico)",
@@ -52,9 +68,13 @@
         "src": "/",
         "dest": "/index.html"
       },
-       { 
-        "src": "/(.*)", 
-        "dest": "/index.html" 
+      {
+        "src": "/index.html",
+        "dest": "/index.html"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/server.js"
       }
     ]
   }

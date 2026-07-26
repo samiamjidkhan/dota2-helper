@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "generate-seo": "node scripts/generate-seo-content.js"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
     "stripe": "^22.0.0"
   },
   "devDependencies": {
+    "marked": "^18.0.7",
     "nodemon": "^3.1.0"
   }
 }

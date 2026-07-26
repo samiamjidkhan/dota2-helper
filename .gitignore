@@ -124,3 +124,4 @@ skills-lock.json
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test 
+.gstack/

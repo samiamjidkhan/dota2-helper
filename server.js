@@ -52,33 +52,8 @@ app.use(express.static(staticFilesPath));
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// --- Hardcoded Hero Data ---
-const DOTA_HERO_NAMES = [
-  "Abaddon", "Alchemist", "Ancient Apparition", "Anti-Mage", "Arc Warden", 
-  "Axe", "Bane", "Batrider", "Beastmaster", "Bloodseeker", "Bounty Hunter", 
-  "Brewmaster", "Bristleback", "Broodmother", "Centaur Warrunner", 
-  "Chaos Knight", "Chen", "Clinkz", "Clockwerk", "Crystal Maiden", 
-  "Dark Seer", "Dark Willow", "Dawnbreaker", "Dazzle", "Death Prophet", 
-  "Disruptor", "Doom", "Dragon Knight", "Drow Ranger", "Earth Spirit", 
-  "Earthshaker", "Elder Titan", "Ember Spirit", "Enchantress", "Enigma", 
-  "Faceless Void", "Grimstroke", "Gyrocopter", "Hoodwink", "Huskar", 
-  "Invoker", "Io", "Jakiro", "Juggernaut", "Keeper of the Light", 
-  "Kunkka", "Legion Commander", "Leshrac", "Lich", "Lifestealer", "Lina", 
-  "Lion", "Lone Druid", "Luna", "Lycan", "Magnus", "Marci", "Mars", 
-  "Medusa", "Meepo", "Mirana", "Monkey King", "Morphling", "Muerta", 
-  "Naga Siren", "Nature's Prophet", "Necrophos", "Night Stalker", "Nyx Assassin", 
-  "Ogre Magi", "Omniknight", "Oracle", "Outworld Destroyer", "Pangolier", 
-  "Phantom Assassin", "Phantom Lancer", "Phoenix", "Primal Beast", "Puck", 
-  "Pudge", "Pugna", "Queen of Pain", "Razor", "Riki", "Rubick", 
-  "Sand King", "Shadow Demon", "Shadow Fiend", "Shadow Shaman", "Silencer", 
-  "Skywrath Mage", "Slardar", "Slark", "Snapfire", "Sniper", "Spectre", 
-  "Spirit Breaker", "Storm Spirit", "Sven", "Techies", "Templar Assassin", 
-  "Terrorblade", "Tidehunter", "Timbersaw", "Tinker", "Tiny", "Treant Protector", 
-  "Troll Warlord", "Tusk", "Underlord", "Undying", "Ursa", "Vengeful Spirit", 
-  "Venomancer", "Viper", "Visage", "Void Spirit", "Warlock", "Weaver", 
-  "Windranger", "Winter Wyvern", "Witch Doctor", "Wraith King", "Zeus", "Ringmaster",
-  "Kez"
-].sort(); // Keep sorted for consistency
+// --- Hero Data (shared roster in lib/heroes.js) ---
+const { DOTA_HERO_NAMES } = require('./lib/heroes');
 
 const VALID_HERO_NAMES_SET = new Set(DOTA_HERO_NAMES);
 
@@ -962,7 +937,10 @@ Be specific to this matchup. No generic advice.`;
     }
 });
 
-// --- Start Server --- 
+// --- SEO pages: hero guides, counters, sitemap, robots + 404 catch-all (see seo.js) ---
+require('./seo')(app);
+
+// --- Start Server ---
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 }); 
