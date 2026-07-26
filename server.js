@@ -44,10 +44,18 @@ app.use(cors()); // Enable CORS for all routes
 app.use('/api/webhook', express.raw({ type: 'application/json' })); // Raw body for Stripe webhook verification
 app.use(express.json()); // Parse JSON request bodies
 
-// --- Serve Static Files --- 
-// Serve static files (HTML, CSS, JS) from the current directory (__dirname)
-const staticFilesPath = __dirname; 
-app.use(express.static(staticFilesPath)); 
+// --- Serve Static Files ---
+// Frontend assets only — backend sources (server.js, seo.js, lib/, data/) live
+// in the same directory and must never be served.
+const staticFilesPath = __dirname;
+const staticHandler = express.static(staticFilesPath);
+const STATIC_ALLOW = new Set(['/index.html', '/style.css', '/script.js']);
+app.use((req, res, next) => {
+  if (STATIC_ALLOW.has(req.path) || req.path.startsWith('/images/')) {
+    return staticHandler(req, res, next);
+  }
+  next();
+});
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
